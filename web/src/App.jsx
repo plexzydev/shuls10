@@ -15,7 +15,7 @@ import AuthCallback from './pages/AuthCallback';
 import Navbar from './components/Navbar';
 import LandingFooter from './components/landing/LandingFooter';
 
-export const API_URL = 'http://localhost:3001';
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 function App() {
   const [user, setUser] = useState(null);

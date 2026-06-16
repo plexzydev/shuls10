@@ -1,0 +1,5 @@
+{
+  "rewrites": [{ "source": "/(.*)", "destination": "/api" }],
+  "buildCommand": "npx prisma generate",
+  "framework": null
+}
