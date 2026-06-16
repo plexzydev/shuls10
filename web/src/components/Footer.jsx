@@ -128,9 +128,16 @@ function FooterLink({ to, children }) {
 }
 
 function SocialIcon({ href, title, children }) {
+  let colors = "bg-brand/12 text-brand hover:bg-brand hover:text-black";
+  if (title === 'Kick') colors = "bg-[#53FC18]/12 text-[#53FC18] hover:bg-[#53FC18] hover:text-black";
+  else if (title === 'X' || title === 'Twitter') colors = "bg-white/12 text-white hover:bg-white hover:text-black";
+  else if (title === 'Instagram') colors = "bg-[#E1306C]/12 text-[#E1306C] hover:bg-[#E1306C] hover:text-white";
+  else if (title === 'Discord') colors = "bg-[#5865F2]/12 text-[#5865F2] hover:bg-[#5865F2] hover:text-white";
+  else if (title === 'YouTube') colors = "bg-[#FF0000]/12 text-[#FF0000] hover:bg-[#FF0000] hover:text-white";
+
   return (
     <a href={href} target="_blank" rel="noopener noreferrer" title={title}
-      className="flex items-center justify-center w-10 h-10 rounded-full bg-brand/12 text-brand hover:bg-brand hover:text-black transition-all duration-300 hover:-translate-y-0.5">
+      className={`flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300 hover:-translate-y-0.5 ${colors}`}>
       <svg width="16" height="16" viewBox="0 0 24 24">{children}</svg>
     </a>
   );

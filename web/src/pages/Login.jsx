@@ -61,8 +61,8 @@ export default function Login() {
         </div>
 
         {/* Brand */}
-        <h1 className="text-4xl font-heading font-black tracking-wider text-foreground mb-1.5 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-          SHULS<span className="text-brand">.</span>
+        <h1 className="text-4xl font-heading font-black tracking-wider text-foreground mb-1.5 animate-fade-in-up text-center w-full" style={{ animationDelay: '0.1s' }}>
+          SHULS
         </h1>
         <p className="text-[9px] tracking-[5px] text-brand font-bold uppercase mb-8 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
           LOYALTY SYSTEM

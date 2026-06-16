@@ -82,8 +82,8 @@ export default function FeatureSplit() {
             <div className="gsap-reveal relative rounded-[32px] bg-card border border-brand/20 p-6 shadow-2xl shadow-black/30 overflow-hidden" data-gsap-dir="right">
               {/* Header */}
               <div className="flex items-center gap-3 mb-6">
-                <div className="font-heading font-black text-lg text-foreground tracking-tight">
-                  SHULS<span className="text-brand">.</span>
+                <div className="font-heading font-black text-sm text-foreground tracking-tight">
+                  KICK.COM/SHULS10
                 </div>
                 <div className="ml-auto flex items-center gap-1.5 rounded-full bg-brand/12 px-3 py-1">
                   <div className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse-dot" />
