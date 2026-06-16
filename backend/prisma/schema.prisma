@@ -1,0 +1,196 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  kickUserId    Int?     @unique
+  kickUsername  String   @unique
+  twitchId      String?  @unique
+  twitchUsername String?
+  displayName   String?
+  avatar        String?
+  kickRole      String   @default("viewer") // viewer, subscriber, vip, moderator, broadcaster
+  discordId     String?  @unique
+  discordUsername String?
+  streamNotify  Boolean  @default(true) // receive DM when stream goes live
+  points        Int      @default(0)
+  totalWatchTime Int     @default(0) // en minutos
+  currentStreak Int      @default(0)
+  longestStreak Int      @default(0)
+  lastSeenStream DateTime?
+  twitchPointsClaimed Boolean @default(false)
+  twitchPointsAmount  Int     @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions      WatchSession[]
+  claims        RewardClaim[]
+  challenges    UserChallenge[]
+  clips         Clip[]
+  clipVotes     ClipVote[]
+  achievements  UserAchievement[]
+  badges        UserBadge[]
+}
+
+model WatchSession {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  startTime DateTime @default(now())
+  endTime   DateTime?
+  duration  Int      @default(0) // en minutos
+  streamId  String?  // ID del stream de Kick si disponible
+  createdAt DateTime @default(now())
+}
+
+model Reward {
+  id          String   @id @default(uuid())
+  name        String
+  description String
+  cost        Int      // puntos necesarios
+  image       String?
+  available   Boolean  @default(true)
+  stock       Int      @default(-1) // -1 = ilimitado
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  claims      RewardClaim[]
+}
+
+model RewardClaim {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  rewardId  String
+  reward    Reward   @relation(fields: [rewardId], references: [id])
+  status    String   @default("pending") // pending, approved, rejected, delivered
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model StreamStatus {
+  id          String   @id @default(uuid())
+  isLive      Boolean  @default(false)
+  streamId    String?
+  title       String?
+  viewerCount Int      @default(0)
+  startedAt   DateTime?
+  updatedAt   DateTime @updatedAt
+}
+
+model Challenge {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  type        String   // daily, weekly, special
+  goal        Int      // target value to complete
+  metric      String   // watchTime, messages, streak, logins
+  reward      Int      // points awarded on completion
+  badgeReward String?  // badge ID if unlocks a badge
+  rewardPrize String?  // reward ID if grants a reward
+  active      Boolean  @default(true)
+  startsAt    DateTime @default(now())
+  endsAt      DateTime?
+  createdAt   DateTime @default(now())
+
+  userChallenges UserChallenge[]
+}
+
+model UserChallenge {
+  id          String   @id @default(uuid())
+  userId      String
+  challengeId String
+  progress    Int      @default(0)
+  completed   Boolean  @default(false)
+  claimed     Boolean  @default(false)
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  user      User      @relation(fields: [userId], references: [id])
+  challenge Challenge @relation(fields: [challengeId], references: [id])
+
+  @@unique([userId, challengeId])
+}
+
+model Clip {
+  id          String   @id @default(uuid())
+  userId      String
+  title       String
+  url         String   // clip URL (kick clip or external)
+  thumbnail   String?
+  votes       Int      @default(0)
+  featured    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id])
+  clipVotes   ClipVote[]
+}
+
+model ClipVote {
+  id      String @id @default(uuid())
+  clipId  String
+  userId  String
+  value   Int    @default(1) // 1 = upvote
+
+  clip    Clip   @relation(fields: [clipId], references: [id])
+  user    User   @relation(fields: [userId], references: [id])
+
+  @@unique([clipId, userId])
+}
+
+model Achievement {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  title       String
+  description String
+  icon        String   // SVG icon name
+  color       String   @default("#52B788")
+  rarity      String   @default("common") // common, rare, epic, legendary
+  condition   String   // JSON condition: {"metric":"watchTime","value":600}
+  createdAt   DateTime @default(now())
+
+  userAchievements UserAchievement[]
+}
+
+model UserAchievement {
+  id            String   @id @default(uuid())
+  userId        String
+  achievementId String
+  unlockedAt    DateTime @default(now())
+  displayed     Boolean  @default(true) // user can toggle visibility
+
+  user        User        @relation(fields: [userId], references: [id])
+  achievement Achievement @relation(fields: [achievementId], references: [id])
+
+  @@unique([userId, achievementId])
+}
+
+model CustomBadge {
+  id          String   @id @default(uuid())
+  name        String
+  icon        String   // SVG icon name from predefined list
+  color       String   @default("#52B788")
+  description String   @default("")
+  createdAt   DateTime @default(now())
+
+  userBadges  UserBadge[]
+}
+
+model UserBadge {
+  id        String   @id @default(uuid())
+  userId    String
+  badgeId   String
+  equipped  Boolean  @default(false)
+  grantedAt DateTime @default(now())
+
+  user  User        @relation(fields: [userId], references: [id])
+  badge CustomBadge @relation(fields: [badgeId], references: [id])
+
+  @@unique([userId, badgeId])
+}

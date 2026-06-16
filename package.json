@@ -1,0 +1,16 @@
+{
+  "name": "shuls-extension",
+  "version": "1.0.0",
+  "description": "Sistema de lealtad Kick/Twitch - Extension + Backend + Web",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "web"
+  ],
+  "scripts": {
+    "backend": "cd backend && npm start",
+    "backend:dev": "cd backend && npm run dev",
+    "web": "cd web && npm run dev",
+    "install:all": "npm install && cd backend && npm install && cd ../web && npm install"
+  }
+}
