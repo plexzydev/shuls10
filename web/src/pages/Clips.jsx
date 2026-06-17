@@ -15,12 +15,13 @@ export default function Clips({ user, token }) {
   useEffect(() => { fetchClips(); }, []);
 
   useEffect(() => {
-    if (!pageRef.current || loading) return;
+    if (!pageRef.current || loading || pageRef.current.dataset.animated) return;
     const ctx = gsap.context(() => {
       gsap.fromTo('.gsap-cl-card', { opacity: 0, y: 15 }, { opacity: 1, y: 0, duration: 0.35, stagger: 0.05, ease: 'power2.out' });
     }, pageRef);
+    pageRef.current.dataset.animated = 'true';
     return () => ctx.revert();
-  }, [clips, loading]);
+  }, [loading]);
 
   async function fetchClips() {
     try {

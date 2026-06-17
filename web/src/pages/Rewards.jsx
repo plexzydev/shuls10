@@ -17,15 +17,16 @@ export default function Rewards({ user, token, onUpdate }) {
   }, []);
 
   useEffect(() => {
-    if (!pageRef.current) return;
+    if (!pageRef.current || pageRef.current.dataset.animatedTab === tab) return;
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
       tl.fromTo('.gsap-rw-header', { opacity: 0, y: 15 }, { opacity: 1, y: 0, duration: 0.5 })
         .fromTo('.gsap-rw-balance', { opacity: 0, y: 15 }, { opacity: 1, y: 0, duration: 0.5 }, '-=0.3')
         .fromTo('.gsap-rw-card', { opacity: 0, y: 20, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, stagger: 0.08 }, '-=0.2');
     }, pageRef);
+    pageRef.current.dataset.animatedTab = tab;
     return () => ctx.revert();
-  }, [rewards, claims, tab]);
+  }, [tab]);
 
   async function fetchRewards() {
     try {
