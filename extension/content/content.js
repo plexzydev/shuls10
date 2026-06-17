@@ -773,88 +773,95 @@ function injectPanel() {
     document.body.appendChild(el);
 
     let panelOpen = false;
-    document.getElementById('shuls-fab').addEventListener('click', () => {
+
+    function togglePanel() {
         panelOpen = !panelOpen;
-        document.getElementById('shuls-panel').classList.toggle('hidden', !panelOpen);
-        document.getElementById('shuls-fab').classList.toggle('active', panelOpen);
-        if (panelOpen) loadPanel();
-    });
-
-    // Move the button into the Kick chat controls bar
-    shulsFabMoveInterval = setInterval(() => {
+        const panel = document.getElementById('shuls-panel');
         const fab = document.getElementById('shuls-fab');
-        if (!fab || fab.dataset.moved === 'true') return;
+        if (panel) panel.classList.toggle('hidden', !panelOpen);
+        if (fab) fab.classList.toggle('active', panelOpen);
+        if (panelOpen) loadPanel();
+    }
 
-        // Find the chat input bottom bar
-        const chatInput = document.querySelector('[data-chat-input], #message-input, textarea[placeholder]');
-        if (!chatInput) return;
+    document.getElementById('shuls-fab').addEventListener('click', togglePanel);
 
-        // Walk up to find the row that contains the input + action buttons
-        let bottomBar = chatInput.closest('form') || chatInput.closest('[class*="flex"]');
+    // Try to move button into Kick's chat controls
+    let moveAttempts = 0;
+    shulsFabMoveInterval = setInterval(() => {
+        moveAttempts++;
+        if (moveAttempts > 60) { // Stop after 60 attempts (48s)
+            clearInterval(shulsFabMoveInterval);
+            console.log('[Shuls] Could not find Kick chat controls, keeping floating button');
+            return;
+        }
+
+        const fab = document.getElementById('shuls-fab');
+        if (!fab || fab.dataset.moved === 'true') {
+            clearInterval(shulsFabMoveInterval);
+            return;
+        }
+
+        // Find the bottom bar of the chat where buttons live
+        // Kick uses a chatroom area with input + buttons at the bottom
+        const bottomBar = findChatBottomBar();
         if (!bottomBar) return;
 
-        // Look for all the small icon buttons in/around the bottom bar area
-        // Kick's buttons are typically <button> elements containing <svg> icons
-        // We look at the entire bottom area for buttons
-        const searchArea = bottomBar.parentElement || bottomBar;
-        const allButtons = Array.from(searchArea.querySelectorAll('button'));
-        
-        // Filter to only icon-sized buttons (ones that contain SVGs and are small)
-        const iconButtons = allButtons.filter(btn => {
-            const svg = btn.querySelector('svg');
-            if (!svg) return false;
-            const rect = btn.getBoundingClientRect();
-            return rect.width < 50 && rect.width > 10;
+        // Find the rightmost group of icon buttons (emotes, store, settings, etc.)
+        const btnGroup = findButtonGroup(bottomBar);
+        if (!btnGroup) return;
+
+        // Create our inline orb button
+        const inlineBtn = document.createElement('button');
+        inlineBtn.id = 'shuls-chat-btn';
+        inlineBtn.setAttribute('type', 'button');
+        inlineBtn.setAttribute('aria-label', 'Shuls Loyalty');
+        inlineBtn.style.cssText = `
+            display: flex; align-items: center; justify-content: center;
+            width: 32px; height: 32px; padding: 4px;
+            background: transparent; border: none; border-radius: 8px;
+            cursor: pointer; transition: all 0.15s ease;
+            flex-shrink: 0; position: relative;
+        `;
+        inlineBtn.innerHTML = `<img src="${chrome.runtime.getURL('icons/points.png')}" alt="Shuls" style="width:22px;height:22px;object-fit:contain;pointer-events:none;" />`;
+
+        inlineBtn.addEventListener('mouseenter', () => {
+            inlineBtn.style.background = 'rgba(34,197,94,0.15)';
+            inlineBtn.style.transform = 'scale(1.1)';
+        });
+        inlineBtn.addEventListener('mouseleave', () => {
+            inlineBtn.style.background = 'transparent';
+            inlineBtn.style.transform = '';
+        });
+        inlineBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            togglePanel();
         });
 
-        if (iconButtons.length === 0) return;
+        // Insert before the last button in the group (typically gear/settings)
+        const buttons = Array.from(btnGroup.children).filter(c => c.tagName === 'BUTTON' || c.tagName === 'DIV');
+        if (buttons.length > 0) {
+            const lastBtn = buttons[buttons.length - 1];
+            btnGroup.insertBefore(inlineBtn, lastBtn);
+        } else {
+            btnGroup.appendChild(inlineBtn);
+        }
 
-        // Strategy: find the button container (the parent div that holds all the icon buttons)
-        // Usually it's the last group of buttons to the right of the input
-        const lastIconBtn = iconButtons[iconButtons.length - 1];
-        const btnContainer = lastIconBtn.parentElement;
-        if (!btnContainer) return;
-
-        // Create our inline button
-        const inlineBtn = document.createElement('div');
-        inlineBtn.id = 'shuls-fab-inline';
-        inlineBtn.className = 'shuls-fab-inline';
-        inlineBtn.innerHTML = `<img src="${chrome.runtime.getURL('icons/points.png')}" alt="Shuls" />`;
-        inlineBtn.style.cssText = 'display:flex;align-items:center;justify-content:center;width:28px;height:28px;cursor:pointer;border-radius:6px;transition:all 0.2s;padding:3px;flex-shrink:0;';
-        
-        inlineBtn.addEventListener('mouseenter', () => { inlineBtn.style.background = 'rgba(255,255,255,0.1)'; inlineBtn.style.transform = 'scale(1.15)'; });
-        inlineBtn.addEventListener('mouseleave', () => { inlineBtn.style.background = ''; inlineBtn.style.transform = ''; });
-        inlineBtn.addEventListener('click', () => {
-            panelOpen = !panelOpen;
-            document.getElementById('shuls-panel').classList.toggle('hidden', !panelOpen);
-            if (panelOpen) loadPanel();
-        });
-        
-        // Insert BEFORE the last icon button (which is typically the gear/settings)
-        // This puts our button where the store button was, pushing store to the right
-        btnContainer.insertBefore(inlineBtn, lastIconBtn);
-
-        // Hide the original floating button and update panel positioning
+        // Hide the floating button
         fab.style.display = 'none';
         fab.dataset.moved = 'true';
 
-        // Reposition the panel to open from the inline button instead
+        // Position panel to float above the chat area
         const panel = document.getElementById('shuls-panel');
-        const extRoot = document.getElementById('shuls-ext-root');
-        if (panel && extRoot) {
-            // Move panel next to the inline button
-            extRoot.style.position = 'relative';
-            extRoot.style.bottom = 'auto';
-            extRoot.style.right = 'auto';
-            // Panel stays in #shuls-ext-root but we need it to float above the inline button
+        if (panel) {
             panel.style.position = 'fixed';
             panel.style.bottom = '80px';
-            panel.style.right = '20px';
+            panel.style.right = '16px';
             panel.style.zIndex = '999999';
         }
 
         clearInterval(shulsFabMoveInterval);
-        console.log('[Shuls] Button moved inline into chat controls');
+        console.log('[Shuls] ✅ Button injected into Kick chat controls');
     }, 800);
 
     document.getElementById('shuls-tabs').addEventListener('click', (e) => {
@@ -865,6 +872,93 @@ function injectPanel() {
         tab.classList.add('active');
         renderTab();
     });
+}
+
+/**
+ * Find the chat bottom bar area in Kick's DOM.
+ * Tries multiple strategies since Kick updates their DOM frequently.
+ */
+function findChatBottomBar() {
+    // Strategy 1: Look for the chatroom footer area
+    const chatroom = document.querySelector('#chatroom') ||
+        document.querySelector('[class*="chatroom-footer"]') ||
+        document.querySelector('[class*="chat-footer"]');
+
+    // Strategy 2: Find the chat input and walk up
+    const chatInput = document.querySelector('#message-input') ||
+        document.querySelector('[data-chat-input]') ||
+        document.querySelector('textarea[placeholder*="enviar"]') ||
+        document.querySelector('textarea[placeholder*="Enviar"]') ||
+        document.querySelector('textarea[placeholder*="Send"]') ||
+        document.querySelector('textarea[placeholder*="message"]') ||
+        document.querySelector('#chatroom textarea') ||
+        document.querySelector('[id*="chatroom"] textarea') ||
+        document.querySelector('[class*="chatroom"] textarea') ||
+        document.querySelector('[class*="chat-input"]') ||
+        document.querySelector('div[contenteditable="true"][class*="chat"]');
+
+    if (chatInput) {
+        // Walk up to find the bar that contains input + buttons
+        let parent = chatInput.parentElement;
+        for (let i = 0; i < 8 && parent; i++) {
+            // The bottom bar usually contains both the input and multiple buttons
+            const hasInput = parent.contains(chatInput);
+            const btns = parent.querySelectorAll('button');
+            if (hasInput && btns.length >= 2) {
+                return parent;
+            }
+            parent = parent.parentElement;
+        }
+    }
+
+    // Strategy 3: If we found the chatroom, look for button clusters near the bottom
+    if (chatroom) {
+        const allBtns = chatroom.querySelectorAll('button');
+        if (allBtns.length > 0) {
+            // Get the last few buttons — they're usually in the bottom bar
+            const lastBtn = allBtns[allBtns.length - 1];
+            return lastBtn.closest('div[class*="flex"]') || lastBtn.parentElement;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Find the group of icon buttons (emotes, store, settings) in the bottom bar.
+ */
+function findButtonGroup(bottomBar) {
+    // Look for a container that has multiple buttons with SVGs (icon buttons)
+    const allButtons = Array.from(bottomBar.querySelectorAll('button'));
+    const iconButtons = allButtons.filter(btn => {
+        const hasSvg = btn.querySelector('svg');
+        const hasImg = btn.querySelector('img');
+        if (!hasSvg && !hasImg) return false;
+        const rect = btn.getBoundingClientRect();
+        return rect.width > 0 && rect.width < 60; // Icon-sized
+    });
+
+    if (iconButtons.length === 0) return null;
+
+    // Find the common parent of the icon buttons
+    // Usually they're all siblings in a flex container
+    const parents = new Map();
+    for (const btn of iconButtons) {
+        const p = btn.parentElement;
+        if (p) parents.set(p, (parents.get(p) || 0) + 1);
+    }
+
+    // Return the parent that contains the most icon buttons
+    let bestParent = null;
+    let bestCount = 0;
+    for (const [parent, count] of parents) {
+        if (count > bestCount) {
+            bestCount = count;
+            bestParent = parent;
+        }
+    }
+
+    return bestParent;
 }
 
 function formatDetailedTime(totalMinutes) {

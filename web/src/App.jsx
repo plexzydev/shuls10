@@ -1,21 +1,32 @@
 import { Routes, Route, Navigate, useNavigate, useSearchParams, Outlet } from 'react-router-dom';
-import { useState, useEffect } from 'react';
-import Login from './pages/Login';
-import LandingPage from './pages/LandingPage';
-import About from './pages/About';
-import FAQ from './pages/FAQ';
-import Terms from './pages/Terms';
-import Dashboard from './pages/Dashboard';
-import Rewards from './pages/Rewards';
-import Leaderboard from './pages/Leaderboard';
-import Challenges from './pages/Challenges';
-import Clips from './pages/Clips';
-import Profile from './pages/Profile';
-import AuthCallback from './pages/AuthCallback';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import Navbar from './components/Navbar';
 import LandingFooter from './components/landing/LandingFooter';
 
+// Lazy-load all pages for faster initial load
+const Login = lazy(() => import('./pages/Login'));
+const LandingPage = lazy(() => import('./pages/LandingPage'));
+const About = lazy(() => import('./pages/About'));
+const FAQ = lazy(() => import('./pages/FAQ'));
+const Terms = lazy(() => import('./pages/Terms'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Rewards = lazy(() => import('./pages/Rewards'));
+const Leaderboard = lazy(() => import('./pages/Leaderboard'));
+const Challenges = lazy(() => import('./pages/Challenges'));
+const Clips = lazy(() => import('./pages/Clips'));
+const Profile = lazy(() => import('./pages/Profile'));
+const AuthCallback = lazy(() => import('./pages/AuthCallback'));
+
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+/** Minimal inline spinner for page transitions */
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center py-32">
+      <div className="w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+    </div>
+  );
+}
 
 function App() {
   const [user, setUser] = useState(null);
@@ -104,42 +115,68 @@ function App() {
   }
 
   return (
-    <Routes>
-      {/* Public landing pages — no dashboard shell */}
-      <Route path="/" element={
-        <LandingPage user={user} />
-      } />
-      <Route path="/login" element={
-        user ? <Navigate to="/dashboard" /> : (
-          <div className="min-h-screen bg-background relative">
-            <div className="bg-glow-bottom" />
-            <div className="bg-grid" />
-            <div className="bg-noise" />
-            <div className="relative z-10">
-              <Login />
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
+        {/* Public landing pages — no dashboard shell */}
+        <Route path="/" element={
+          <LandingPage user={user} />
+        } />
+        <Route path="/login" element={
+          user ? <Navigate to="/dashboard" /> : (
+            <div className="min-h-screen bg-background relative">
+              <div className="bg-glow-bottom" />
+              <div className="bg-grid" />
+              <div className="bg-noise" />
+              <div className="relative z-10">
+                <Login />
+              </div>
             </div>
-          </div>
-        )
-      } />
-      <Route path="/about" element={<About />} />
-      <Route path="/faq" element={<FAQ />} />
-      <Route path="/terms" element={<Terms />} />
-      <Route path="/auth/callback" element={
-        <AuthCallback onAuth={handleAuth} />
-      } />
+          )
+        } />
+        <Route path="/about" element={<About />} />
+        <Route path="/faq" element={<FAQ />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/auth/callback" element={
+          <AuthCallback onAuth={handleAuth} />
+        } />
 
-      {/* Authenticated dashboard routes — with Navbar/Footer shell */}
-      <Route element={user ? <DashboardShell user={user} onLogout={handleLogout} /> : <Navigate to="/login" />}>
-        <Route path="/dashboard" element={<Dashboard user={user} token={token} onUpdate={fetchUser} />} />
-        <Route path="/rewards" element={<Rewards user={user} token={token} onUpdate={fetchUser} />} />
-        <Route path="/leaderboard" element={<Leaderboard />} />
-        <Route path="/challenges" element={<Challenges user={user} token={token} onUpdate={fetchUser} />} />
-        <Route path="/clips" element={<Clips user={user} token={token} onUpdate={fetchUser} />} />
-        <Route path="/profile" element={<Profile user={user} token={token} onUpdate={fetchUser} />} />
-      </Route>
+        {/* Authenticated dashboard routes — with Navbar/Footer shell */}
+        <Route element={user ? <DashboardShell user={user} onLogout={handleLogout} /> : <Navigate to="/login" />}>
+          <Route path="/dashboard" element={
+            <Suspense fallback={<PageLoader />}>
+              <Dashboard user={user} token={token} onUpdate={fetchUser} />
+            </Suspense>
+          } />
+          <Route path="/rewards" element={
+            <Suspense fallback={<PageLoader />}>
+              <Rewards user={user} token={token} onUpdate={fetchUser} />
+            </Suspense>
+          } />
+          <Route path="/leaderboard" element={
+            <Suspense fallback={<PageLoader />}>
+              <Leaderboard />
+            </Suspense>
+          } />
+          <Route path="/challenges" element={
+            <Suspense fallback={<PageLoader />}>
+              <Challenges user={user} token={token} onUpdate={fetchUser} />
+            </Suspense>
+          } />
+          <Route path="/clips" element={
+            <Suspense fallback={<PageLoader />}>
+              <Clips user={user} token={token} onUpdate={fetchUser} />
+            </Suspense>
+          } />
+          <Route path="/profile" element={
+            <Suspense fallback={<PageLoader />}>
+              <Profile user={user} token={token} onUpdate={fetchUser} />
+            </Suspense>
+          } />
+        </Route>
 
-      <Route path="*" element={<Navigate to="/" />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
+    </Suspense>
   );
 }
 
