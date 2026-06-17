@@ -3,6 +3,8 @@ import { Film, ChevronUp, ChevronDown, Plus, Trash2, ExternalLink } from 'lucide
 import gsap from 'gsap';
 import { API_URL } from '../App';
 
+let clipsAnimated = false;
+
 export default function Clips({ user, token }) {
   const [clips, setClips] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,11 +17,11 @@ export default function Clips({ user, token }) {
   useEffect(() => { fetchClips(); }, []);
 
   useEffect(() => {
-    if (!pageRef.current || loading || pageRef.current.dataset.animated) return;
+    if (!pageRef.current || loading || clipsAnimated) return;
+    clipsAnimated = true;
     const ctx = gsap.context(() => {
       gsap.fromTo('.gsap-cl-card', { opacity: 0, y: 15 }, { opacity: 1, y: 0, duration: 0.35, stagger: 0.05, ease: 'power2.out' });
     }, pageRef);
-    pageRef.current.dataset.animated = 'true';
     return () => ctx.revert();
   }, [loading]);
 

@@ -3,6 +3,8 @@ import { Target, Clock, Zap, Trophy, CheckCircle, Coins, MessageSquare, Eye, Fla
 import gsap from 'gsap';
 import { API_URL } from '../App';
 
+let challengesAnimated = false;
+
 export default function Challenges({ user, token, onUpdate }) {
   const [challenges, setChallenges] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,13 +21,13 @@ export default function Challenges({ user, token, onUpdate }) {
   }, []);
 
   useEffect(() => {
-    if (!pageRef.current || loading || pageRef.current.dataset.animated) return;
+    if (!pageRef.current || loading || challengesAnimated) return;
+    challengesAnimated = true;
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
       tl.fromTo('.gsap-ch-header', { opacity: 0, y: 15 }, { opacity: 1, y: 0, duration: 0.5 })
         .fromTo('.gsap-ch-card', { opacity: 0, y: 20, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: 0.4, stagger: 0.06 }, '-=0.2');
     }, pageRef);
-    pageRef.current.dataset.animated = 'true';
     return () => ctx.revert();
   }, [loading]);
 

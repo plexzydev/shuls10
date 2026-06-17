@@ -102,6 +102,10 @@ function deactivate() {
     if (rolesSyncInterval) { clearInterval(rolesSyncInterval); rolesSyncInterval = null; }
     if (giftDropTimer) { clearTimeout(giftDropTimer); giftDropTimer = null; }
     if (giftCheckInterval) { clearInterval(giftCheckInterval); giftCheckInterval = null; }
+    if (shulsFabMoveInterval) { clearInterval(shulsFabMoveInterval); shulsFabMoveInterval = null; }
+
+    // Remove inline button if it was moved into Kick's controls
+    document.getElementById('shuls-fab-inline')?.remove();
 
     // Disconnect chat observer
     if (chatObserver) { chatObserver.disconnect(); chatObserver = null; }
@@ -249,7 +253,6 @@ function applyChatStyling(config) {
         [class*="chatroom"],
         .chatroom {
             position: relative !important;
-            overflow: hidden !important;
         }
         .shuls-chat-bg {
             position: absolute !important;
@@ -749,11 +752,13 @@ function injectBadges(usernameEl, userData) {
 
 // ========== FLOATING PANEL ==========
 
+let shulsFabMoveInterval = null;
+
 function injectPanel() {
     const el = document.createElement('div');
     el.id = 'shuls-ext-root';
     el.innerHTML = `
-        <div class="shuls-fab" id="shuls-fab"><img src="${chrome.runtime.getURL('icons/logo.png')}" alt="S" /></div>
+        <div class="shuls-fab" id="shuls-fab"><img src="${chrome.runtime.getURL('icons/points.png')}" alt="S" /></div>
         <div class="shuls-panel hidden" id="shuls-panel">
             <div class="shuls-tabs" id="shuls-tabs">
                 <button class="shuls-tab active" data-tab="insignias">Insignias</button>
@@ -774,6 +779,83 @@ function injectPanel() {
         document.getElementById('shuls-fab').classList.toggle('active', panelOpen);
         if (panelOpen) loadPanel();
     });
+
+    // Move the button into the Kick chat controls bar
+    shulsFabMoveInterval = setInterval(() => {
+        const fab = document.getElementById('shuls-fab');
+        if (!fab || fab.dataset.moved === 'true') return;
+
+        // Find the chat input bottom bar
+        const chatInput = document.querySelector('[data-chat-input], #message-input, textarea[placeholder]');
+        if (!chatInput) return;
+
+        // Walk up to find the row that contains the input + action buttons
+        let bottomBar = chatInput.closest('form') || chatInput.closest('[class*="flex"]');
+        if (!bottomBar) return;
+
+        // Look for all the small icon buttons in/around the bottom bar area
+        // Kick's buttons are typically <button> elements containing <svg> icons
+        // We look at the entire bottom area for buttons
+        const searchArea = bottomBar.parentElement || bottomBar;
+        const allButtons = Array.from(searchArea.querySelectorAll('button'));
+        
+        // Filter to only icon-sized buttons (ones that contain SVGs and are small)
+        const iconButtons = allButtons.filter(btn => {
+            const svg = btn.querySelector('svg');
+            if (!svg) return false;
+            const rect = btn.getBoundingClientRect();
+            return rect.width < 50 && rect.width > 10;
+        });
+
+        if (iconButtons.length === 0) return;
+
+        // Strategy: find the button container (the parent div that holds all the icon buttons)
+        // Usually it's the last group of buttons to the right of the input
+        const lastIconBtn = iconButtons[iconButtons.length - 1];
+        const btnContainer = lastIconBtn.parentElement;
+        if (!btnContainer) return;
+
+        // Create our inline button
+        const inlineBtn = document.createElement('div');
+        inlineBtn.id = 'shuls-fab-inline';
+        inlineBtn.className = 'shuls-fab-inline';
+        inlineBtn.innerHTML = `<img src="${chrome.runtime.getURL('icons/points.png')}" alt="Shuls" />`;
+        inlineBtn.style.cssText = 'display:flex;align-items:center;justify-content:center;width:28px;height:28px;cursor:pointer;border-radius:6px;transition:all 0.2s;padding:3px;flex-shrink:0;';
+        
+        inlineBtn.addEventListener('mouseenter', () => { inlineBtn.style.background = 'rgba(255,255,255,0.1)'; inlineBtn.style.transform = 'scale(1.15)'; });
+        inlineBtn.addEventListener('mouseleave', () => { inlineBtn.style.background = ''; inlineBtn.style.transform = ''; });
+        inlineBtn.addEventListener('click', () => {
+            panelOpen = !panelOpen;
+            document.getElementById('shuls-panel').classList.toggle('hidden', !panelOpen);
+            if (panelOpen) loadPanel();
+        });
+        
+        // Insert BEFORE the last icon button (which is typically the gear/settings)
+        // This puts our button where the store button was, pushing store to the right
+        btnContainer.insertBefore(inlineBtn, lastIconBtn);
+
+        // Hide the original floating button and update panel positioning
+        fab.style.display = 'none';
+        fab.dataset.moved = 'true';
+
+        // Reposition the panel to open from the inline button instead
+        const panel = document.getElementById('shuls-panel');
+        const extRoot = document.getElementById('shuls-ext-root');
+        if (panel && extRoot) {
+            // Move panel next to the inline button
+            extRoot.style.position = 'relative';
+            extRoot.style.bottom = 'auto';
+            extRoot.style.right = 'auto';
+            // Panel stays in #shuls-ext-root but we need it to float above the inline button
+            panel.style.position = 'fixed';
+            panel.style.bottom = '80px';
+            panel.style.right = '20px';
+            panel.style.zIndex = '999999';
+        }
+
+        clearInterval(shulsFabMoveInterval);
+        console.log('[Shuls] Button moved inline into chat controls');
+    }, 800);
 
     document.getElementById('shuls-tabs').addEventListener('click', (e) => {
         const tab = e.target.closest('.shuls-tab');

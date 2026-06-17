@@ -4,6 +4,9 @@ import { Link } from 'react-router-dom';
 import { API_URL } from '../App';
 import { gsap } from '../hooks/useGsap';
 
+// Track if intro animation already played this session
+let dashboardAnimated = false;
+
 export default function Dashboard({ user, token }) {
   const [stats, setStats] = useState(null);
   const [stream, setStream] = useState({ isLive: false });
@@ -17,14 +20,14 @@ export default function Dashboard({ user, token }) {
   }, []);
 
   useEffect(() => {
-    if (!pageRef.current || !stats || pageRef.current.dataset.animated) return;
+    if (!pageRef.current || !stats || dashboardAnimated) return;
+    dashboardAnimated = true;
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
       tl.fromTo('.gsap-reveal', { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.7, stagger: 0.1 })
         .fromTo('.gsap-stat', { opacity: 0, x: 20 }, { opacity: 1, x: 0, duration: 0.5, stagger: 0.1 }, '-=0.4')
         .fromTo('.gsap-hero-number', { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.8, ease: 'elastic.out(1,0.5)' }, '-=0.5');
     }, pageRef);
-    pageRef.current.dataset.animated = 'true';
     return () => ctx.revert();
   }, [stats]);
 

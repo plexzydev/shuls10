@@ -9,6 +9,8 @@ const TABS = [
   { key: 'streak', label: 'Racha', icon: <Flame size={13} />, valueKey: 'longestStreak', format: v => v.toString(), color: 'text-orange-400' },
 ];
 
+let lbAnimated = {};
+
 export default function Leaderboard() {
   const [users, setUsers] = useState([]);
   const [sortBy, setSortBy] = useState('points');
@@ -17,7 +19,8 @@ export default function Leaderboard() {
   useEffect(() => { fetchLeaderboard(); }, [sortBy]);
 
   useEffect(() => {
-    if (!pageRef.current || !users.length) return;
+    if (!pageRef.current || !users.length || lbAnimated[sortBy]) return;
+    lbAnimated[sortBy] = true;
     const ctx = gsap.context(() => {
       gsap.fromTo('.gsap-lb-row', { opacity: 0, x: -10 }, { opacity: 1, x: 0, duration: 0.3, stagger: 0.04, ease: 'power2.out' });
     }, pageRef);
