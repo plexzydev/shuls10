@@ -4,7 +4,7 @@ export default function Footer() {
       {/* Rounded top edge */}
       <div
         className="bg-popover"
-        style={{ borderRadius: '140px 140px 0 0' }}
+        style={{ borderRadius: '50% 50% 0 0 / 120px 120px 0 0' }}
       >
         <div className="max-w-[1100px] mx-auto px-6 pt-16 pb-10">
 

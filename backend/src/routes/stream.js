@@ -101,12 +101,18 @@ async function updateChallengeProgress(prisma, userId, user) {
     });
 
     for (const challenge of activeChallenges) {
-        let currentValue = 0;
+        const existing = await prisma.userChallenge.findFirst({
+            where: { userId, challengeId: challenge.id }
+        });
+
+        if (existing?.completed) continue;
+
+        let currentValue = existing ? existing.progress : 0;
 
         switch (challenge.metric) {
             case 'watchTime':
-                // totalWatchTime is in minutes, +1 because we just incremented
-                currentValue = (user.totalWatchTime || 0) + 1;
+                // Increment by 1 minute for this heartbeat
+                currentValue += 1;
                 break;
             case 'streak':
                 currentValue = user.currentStreak || 0;
@@ -129,13 +135,8 @@ async function updateChallengeProgress(prisma, userId, user) {
 
         const progress = Math.min(currentValue, challenge.goal);
 
-        const existing = await prisma.userChallenge.findFirst({
-            where: { userId, challengeId: challenge.id }
-        });
-
         if (existing) {
-            // Only update if not already completed and progress changed
-            if (!existing.completed && progress > existing.progress) {
+            if (progress > existing.progress) {
                 const completed = progress >= challenge.goal;
                 await prisma.userChallenge.update({
                     where: { id: existing.id },

@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useSearchParams, Outlet } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import Login from './pages/Login';
 import LandingPage from './pages/LandingPage';
@@ -129,48 +129,15 @@ function App() {
       } />
 
       {/* Authenticated dashboard routes — with Navbar/Footer shell */}
-      <Route path="/dashboard" element={
-        user ? (
-          <DashboardShell user={user} onLogout={handleLogout}>
-            <Dashboard user={user} token={token} onUpdate={fetchUser} />
-          </DashboardShell>
-        ) : <Navigate to="/login" />
-      } />
-      <Route path="/rewards" element={
-        user ? (
-          <DashboardShell user={user} onLogout={handleLogout}>
-            <Rewards user={user} token={token} onUpdate={fetchUser} />
-          </DashboardShell>
-        ) : <Navigate to="/login" />
-      } />
-      <Route path="/leaderboard" element={
-        user ? (
-          <DashboardShell user={user} onLogout={handleLogout}>
-            <Leaderboard />
-          </DashboardShell>
-        ) : <Navigate to="/login" />
-      } />
-      <Route path="/challenges" element={
-        user ? (
-          <DashboardShell user={user} onLogout={handleLogout}>
-            <Challenges user={user} token={token} onUpdate={fetchUser} />
-          </DashboardShell>
-        ) : <Navigate to="/login" />
-      } />
-      <Route path="/clips" element={
-        user ? (
-          <DashboardShell user={user} onLogout={handleLogout}>
-            <Clips user={user} token={token} onUpdate={fetchUser} />
-          </DashboardShell>
-        ) : <Navigate to="/login" />
-      } />
-      <Route path="/profile" element={
-        user ? (
-          <DashboardShell user={user} onLogout={handleLogout}>
-            <Profile user={user} token={token} onUpdate={fetchUser} />
-          </DashboardShell>
-        ) : <Navigate to="/login" />
-      } />
+      <Route element={user ? <DashboardShell user={user} onLogout={handleLogout} /> : <Navigate to="/login" />}>
+        <Route path="/dashboard" element={<Dashboard user={user} token={token} onUpdate={fetchUser} />} />
+        <Route path="/rewards" element={<Rewards user={user} token={token} onUpdate={fetchUser} />} />
+        <Route path="/leaderboard" element={<Leaderboard />} />
+        <Route path="/challenges" element={<Challenges user={user} token={token} onUpdate={fetchUser} />} />
+        <Route path="/clips" element={<Clips user={user} token={token} onUpdate={fetchUser} />} />
+        <Route path="/profile" element={<Profile user={user} token={token} onUpdate={fetchUser} />} />
+      </Route>
+
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );
@@ -188,7 +155,7 @@ function DashboardShell({ user, onLogout, children }) {
       <div className="relative z-10 flex flex-col min-h-screen">
         <Navbar user={user} onLogout={onLogout} />
         <div className="flex-1">
-          {children}
+          {children || <Outlet />}
         </div>
         <LandingFooter />
       </div>

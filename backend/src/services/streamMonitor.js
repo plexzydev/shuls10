@@ -8,6 +8,7 @@ class StreamMonitor {
         this.channelSlug = process.env.KICK_CHANNEL_SLUG || 'shuls10';
         this.isLive = false;
         this.discord = new DiscordNotifier(prisma);
+        this.lastDay = new Date().getDate();
     }
 
     async start() {
@@ -38,6 +39,14 @@ class StreamMonitor {
             const channel = await response.json();
             const livestream = channel.livestream;
             const isLive = livestream !== null && livestream !== undefined;
+
+            // Daily reset check
+            const currentDay = new Date().getDate();
+            if (currentDay !== this.lastDay) {
+                console.log(`🌅 Cambio de día detectado. Reseteando misiones diarias...`);
+                await this.resetDailyChallenges();
+                this.lastDay = currentDay;
+            }
 
             // Actualizar estado en DB
             const existing = await this.prisma.streamStatus.findFirst();
@@ -125,6 +134,32 @@ class StreamMonitor {
             },
             data: { currentStreak: 0 }
         });
+    }
+
+    async resetDailyChallenges() {
+        try {
+            // Find all daily challenges
+            const dailyChallenges = await this.prisma.challenge.findMany({
+                where: { type: 'daily' },
+                select: { id: true }
+            });
+            const dailyChallengeIds = dailyChallenges.map(c => c.id);
+
+            if (dailyChallengeIds.length > 0) {
+                await this.prisma.userChallenge.updateMany({
+                    where: { challengeId: { in: dailyChallengeIds } },
+                    data: {
+                        progress: 0,
+                        completed: false,
+                        claimed: false,
+                        completedAt: null
+                    }
+                });
+                console.log(`✅ Misiones diarias reseteadas exitosamente.`);
+            }
+        } catch (error) {
+            console.error('Error reseteando misiones diarias:', error);
+        }
     }
 }
 
