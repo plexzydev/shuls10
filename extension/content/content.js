@@ -377,18 +377,19 @@ function scanExistingMessages() {
 }
 
 function processMsg(node) {
+function processMsg(node) {
     if (!node || !node.querySelector) return;
 
     // Kick uses a virtualized list - node might be a container with multiple messages
     // Find all individual message rows within this node
-    const messageRows = node.querySelectorAll('.group.relative');
+    const messageRows = node.querySelectorAll('.group.relative, [class*="chat-entry"], [class*="chat-message"], [data-chat-entry]');
     if (messageRows.length > 0) {
         messageRows.forEach(row => processSingleMsg(row));
         return;
     }
 
     // Or this node itself might be a message row
-    if (node.classList?.contains('group') || node.querySelector('.break-words')) {
+    if (node.classList?.contains('group') || node.className.includes('chat-entry') || node.querySelector('.break-words') || node.querySelector('[class*="chat-message"]')) {
         processSingleMsg(node);
     }
 }
@@ -400,49 +401,30 @@ function processSingleMsg(node) {
     // Skip nodes outside the chat area (e.g. points display, nav elements)
     if (node.closest && (node.closest('nav') || node.closest('header') || node.closest('[class*="channel-points"]') || node.closest('[class*="sidebar"]'))) return;
 
-    // In Kick's chat, username is shown as a colored span with font-bold/font-semibold 
-    // inside the message div, typically followed by ": " and the message text
     let usernameEl = null;
     let username = '';
 
-    // Strategy 1: Find the chat-message-identity or username wrapper
-    usernameEl = node.querySelector('[class*="chat-message-identity"] span[class*="font-bold"]');
-    if (!usernameEl) usernameEl = node.querySelector('[class*="chat-message-identity"] span[class*="font-semibold"]');
+    // Bulletproof Username Strategy:
+    // Look for any element that has font-bold and a text color, or is inside a username container
+    const candidates = Array.from(node.querySelectorAll('span, button, a, div')).filter(el => {
+        const c = el.className || '';
+        const hasColor = el.style && el.style.color;
+        const isBold = c.includes('font-bold') || c.includes('font-semibold');
+        const isIdentity = c.includes('chat-message-identity') || c.includes('username') || c.includes('chat-entry-username');
+        return (isBold && hasColor) || isIdentity;
+    });
 
-    // Strategy 2: Find a bold/semibold span with a color style (Kick colors usernames)
-    if (!usernameEl) {
-        const candidates = node.querySelectorAll('span[class*="font-bold"][style*="color"], span[class*="font-semibold"][style*="color"], button[class*="font-bold"][style*="color"], span.font-bold, span.font-semibold');
-        for (const el of candidates) {
-            const text = el.textContent?.trim();
-            // Username: short text, no spaces, not a timestamp, not purely numeric
-            if (text && text.length >= 2 && text.length < 26 && !text.includes(' ') && !/^\d{1,2}:\d{2}$/.test(text) && !/^[\d,.]+$/.test(text)) {
+    for (let el of candidates) {
+        // If it's a wrapper, find the deepest text node
+        while(el.children.length === 1) {
+            el = el.children[0];
+        }
+        
+        const text = el.textContent?.trim();
+        if (text && text.length >= 2 && text.length < 26 && !text.includes(' ') && !/^[\d,.]+$/.test(text)) {
+            // Must not be a timestamp
+            if (!/^\d{1,2}:\d{2}$/.test(text)) {
                 usernameEl = el;
-                break;
-            }
-        }
-    }
-
-    // Strategy 3: Find a clickable username (button or link that triggers user popup)
-    if (!usernameEl) {
-        const buttons = node.querySelectorAll('button[class*="inline"], button span[style*="color"], button[class*="username"], button[class*="identity"]');
-        for (const btn of buttons) {
-            const text = btn.textContent?.trim();
-            if (text && text.length >= 2 && text.length < 26 && !text.includes(' ') && !/^\d/.test(text) && !/^[\d,.]+$/.test(text)) {
-                usernameEl = btn;
-                break;
-            }
-        }
-    }
-
-    // Strategy 4: Look for colored text that appears before a colon or message content
-    if (!usernameEl) {
-        const allSpans = node.querySelectorAll('span[style*="color"]');
-        for (const s of allSpans) {
-            const text = s.textContent?.trim();
-            const color = s.style?.color;
-            // Username spans have a color and contain a short word (the username)
-            if (text && text.length >= 2 && text.length < 26 && !text.includes(' ') && color && !/^\d{1,2}:\d{2}$/.test(text) && !/^[\d,.]+$/.test(text)) {
-                usernameEl = s;
                 break;
             }
         }
@@ -452,13 +434,13 @@ function processSingleMsg(node) {
 
     username = usernameEl.textContent?.trim().toLowerCase().replace(/[:\s]/g, '');
     if (!username || username.length < 2) return;
-    // Reject purely numeric strings (e.g. Kick's points counter "210")
+    // Reject purely numeric strings
     if (/^[\d,.]+$/.test(username)) return;
 
     // Debug: log first few found usernames
     if (debugCount < 5) {
         debugCount++;
-        console.log(`[Shuls] Found username: "${username}" via`, usernameEl.tagName, usernameEl.getAttribute('class')?.substring(0, 40));
+        console.log(`[Shuls] Found username: "${username}" via`, usernameEl.tagName, usernameEl.className);
     }
 
     // Track message for challenge progress
