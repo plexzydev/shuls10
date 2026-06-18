@@ -219,20 +219,11 @@ function injectChatBackground() {
         }
         if (chatroom.querySelector('.shuls-chat-bg')) return;
 
-        const video = document.createElement('video');
-        video.className = 'shuls-chat-bg';
-        video.src = chrome.runtime.getURL('icons/chat-bg.mp4');
-        video.autoplay = true;
-        video.loop = true;
-        video.muted = true;
-        video.playsInline = true;
-        video.setAttribute('playsinline', '');
-        video.setAttribute('disablePictureInPicture', '');
-        video.setAttribute('disableRemotePlayback', '');
-        chatroom.appendChild(video);
-        // Ensure it plays (autoplay policies)
-        video.play().catch(() => {});
-        console.log('[Shuls] Chat background video injected');
+        const img = document.createElement('img');
+        img.className = 'shuls-chat-bg';
+        img.src = chrome.runtime.getURL('icons/chat-bg.gif');
+        chatroom.appendChild(img);
+        console.log('[Shuls] Chat background GIF injected');
     }
     tryInject();
 }
