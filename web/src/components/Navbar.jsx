@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Gift, Trophy, Target, Film, User, LogOut, ChevronDown, Menu, X, MoreHorizontal, Info, HelpCircle, FileText } from 'lucide-react';
+import { LayoutDashboard, Gift, Trophy, Target, Film, User, LogOut, ChevronDown, Menu, X, MoreHorizontal, Info, HelpCircle, FileText, Brain } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
 export default function Navbar({ user, onLogout }) {
@@ -39,6 +39,7 @@ export default function Navbar({ user, onLogout }) {
     { to: '/rewards', label: 'Rewards', icon: <Gift size={15} /> },
     { to: '/challenges', label: 'Retos', icon: <Target size={15} /> },
     { to: '/clips', label: 'Clips', icon: <Film size={15} /> },
+    { to: '/aichat', label: 'AI Chat', icon: <Brain size={15} /> },
     { to: '/leaderboard', label: 'Ranking', icon: <Trophy size={15} /> },
     { to: '/profile', label: 'Perfil', icon: <User size={15} /> },
   ];

@@ -14,6 +14,7 @@ const challengeRoutes = require('./routes/challenges');
 const clipRoutes = require('./routes/clips');
 const profileRoutes = require('./routes/profile');
 const badgeRoutes = require('./routes/badges');
+const openrouterRoutes = require('./routes/openrouter');
 
 const app = express();
 const prisma = new PrismaClient();
@@ -87,6 +88,7 @@ app.use('/api/challenges', challengeRoutes);
 app.use('/api/clips', clipRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/badges', badgeRoutes);
+app.use('/api/openrouter', openrouterRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
