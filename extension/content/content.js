@@ -743,7 +743,7 @@ function injectPanel() {
     const el = document.createElement('div');
     el.id = 'shuls-ext-root';
     el.innerHTML = `
-        <div class="shuls-fab" id="shuls-fab"><img src="${chrome.runtime.getURL('icons/points.png')}" alt="S" style="width:100%;height:100%;object-fit:contain;" /></div>
+        <div class="shuls-fab" id="shuls-fab"><img src="${chrome.runtime.getURL('icons/points.png')}" alt="S" style="width:100%;height:100%;object-fit:contain;pointer-events:none;" /></div>
         <div class="shuls-panel hidden" id="shuls-panel">
             <div class="shuls-tabs" id="shuls-tabs">
                 <button class="shuls-tab active" data-tab="insignias">Insignias</button>
@@ -760,10 +760,25 @@ function injectPanel() {
     let panelOpen = false;
 
     // FAB click toggles the panel
-    document.getElementById('shuls-fab').addEventListener('click', () => {
+    document.getElementById('shuls-fab').addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
         panelOpen = !panelOpen;
-        document.getElementById('shuls-panel').classList.toggle('hidden', !panelOpen);
-        document.getElementById('shuls-fab').classList.toggle('active', panelOpen);
+        const panel = document.getElementById('shuls-panel');
+        const fab = document.getElementById('shuls-fab');
+        
+        if (panelOpen && panel && fab) {
+            // Dynamically position the panel above the FAB
+            const fabRect = fab.getBoundingClientRect();
+            panel.style.position = 'fixed';
+            panel.style.bottom = `${window.innerHeight - fabRect.top + 10}px`;
+            panel.style.left = `${fabRect.left}px`;
+            panel.style.zIndex = '999999';
+        }
+        
+        if (panel) panel.classList.toggle('hidden', !panelOpen);
+        if (fab) fab.classList.toggle('active', panelOpen);
         if (panelOpen) loadPanel();
     });
 
@@ -777,13 +792,12 @@ function injectPanel() {
         renderTab();
     });
 
-    // Try to position near the chat input area (bottom-right of chat)
+    // Try to position near the chat input area
     positionFabNearChat();
 }
 
 /**
- * Reposition the floating button so it sits right next to Kick's chat input bar,
- * like a native chat icon. Does NOT modify Kick's DOM — only moves our own element.
+ * Moves the FAB button into Kick's DOM right next to their Points button.
  */
 function positionFabNearChat() {
     let attempts = 0;
@@ -794,50 +808,85 @@ function positionFabNearChat() {
             return;
         }
 
-        // Find the chat input area
         const chatInput = document.querySelector('#message-input') ||
             document.querySelector('[data-chat-input]') ||
             document.querySelector('#chatroom textarea') ||
-            document.querySelector('[class*="chatroom"] textarea') ||
-            document.querySelector('textarea[placeholder*="Send"]') ||
-            document.querySelector('textarea[placeholder*="enviar"]') ||
-            document.querySelector('textarea[placeholder*="Enviar"]') ||
-            document.querySelector('textarea[placeholder*="message"]');
+            document.querySelector('[class*="chatroom"] textarea');
 
         if (!chatInput) return;
 
-        // Get the bounding rect of the chat input to position our button nearby
         const inputRect = chatInput.getBoundingClientRect();
         if (inputRect.width === 0) return;
 
-        const chatContainer = chatInput.closest('#chatroom') || chatInput.closest('[class*="chatroom"]') || document.body;
-        const chatRect = chatContainer.getBoundingClientRect();
+        // Find buttons that are physically below the top of the chat input
+        // Kick places the points/identity button below the textarea on the left
+        const allBtns = Array.from(document.querySelectorAll('button')).filter(b => {
+            const r = b.getBoundingClientRect();
+            // Must be visible, below the top of input, and inside the chat area
+            return r.width > 0 && r.top > inputRect.top - 10 && b.closest('[class*="chat"]');
+        });
 
-        const root = document.getElementById('shuls-ext-root');
+        if (allBtns.length === 0) return;
+
+        // Sort by X coordinate (leftmost first)
+        allBtns.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
+
+        const pointsBtn = allBtns[0];
+        const btnContainer = pointsBtn.parentElement;
+        
         const fab = document.getElementById('shuls-fab');
+        if (!pointsBtn || !btnContainer || !fab) return;
+
+        // If the FAB is already in the right place, do nothing
+        if (fab.parentElement === btnContainer) {
+            clearInterval(iv);
+            return;
+        }
+
+        // Style the FAB to match Kick's button size and layout
+        fab.style.position = 'relative';
+        fab.style.display = 'flex';
+        fab.style.alignItems = 'center';
+        fab.style.justifyContent = 'center';
+        fab.style.width = '32px';
+        fab.style.height = '32px';
+        fab.style.padding = '4px';
+        fab.style.cursor = 'pointer';
+        fab.style.borderRadius = '6px';
+        fab.style.marginRight = '8px'; // Space between our orb and their points
+        fab.style.flexShrink = '0';
+        fab.style.bottom = 'auto';
+        fab.style.right = 'auto';
+        fab.style.left = 'auto';
+        
+        // Add hover effect
+        fab.addEventListener('mouseenter', () => fab.style.background = 'rgba(34,197,94,0.15)');
+        fab.addEventListener('mouseleave', () => fab.style.background = 'transparent');
+
+        // Insert our FAB right after Kick's points button
+        btnContainer.insertBefore(fab, pointsBtn.nextSibling);
+
+        // Hide original root container so it doesn't block clicks
+        const root = document.getElementById('shuls-ext-root');
+        if (root) {
+            root.style.position = 'fixed';
+            root.style.width = '0';
+            root.style.height = '0';
+            root.style.overflow = 'visible';
+            root.style.pointerEvents = 'none'; // Let clicks pass through
+        }
+        
+        // Ensure panel can receive clicks
         const panel = document.getElementById('shuls-panel');
-        if (!root || !fab) return;
-
-        // Kick's points are usually above the input or on the left.
-        // Position the root container fixed, left side, just above the chat input
-        root.style.position = 'fixed';
-        root.style.bottom = `${window.innerHeight - inputRect.top + 10}px`; // 10px above the input box
-        root.style.left = `${chatRect.left + 20}px`; // 20px from the left edge of the chatroom
-        root.style.right = 'auto';
-        root.style.zIndex = '999999';
-
-        // Make the panel open upward and rightward from the button
         if (panel) {
-            panel.style.position = 'absolute';
-            panel.style.bottom = '48px';
-            panel.style.left = '0';
-            panel.style.right = 'auto';
+            panel.style.pointerEvents = 'auto';
         }
 
         clearInterval(iv);
-        console.log('[Shuls] ✅ Button positioned near chat input on the left');
+        console.log('[Shuls] ✅ Button injected inline next to Kick points');
     }, 800);
 }
+
 function formatDetailedTime(totalMinutes) {
     if (!totalMinutes || totalMinutes === 0) return { text: '0m', days: 0, hours: 0, mins: 0 };
     const days = Math.floor(totalMinutes / 1440);
