@@ -424,7 +424,7 @@ function processSingleMsg(node) {
 
     // Strategy 3: Find a clickable username (button or link that triggers user popup)
     if (!usernameEl) {
-        const buttons = node.querySelectorAll('button[class*="inline"], button span[style*="color"]');
+        const buttons = node.querySelectorAll('button[class*="inline"], button span[style*="color"], button[class*="username"], button[class*="identity"]');
         for (const btn of buttons) {
             const text = btn.textContent?.trim();
             if (text && text.length >= 2 && text.length < 26 && !text.includes(' ') && !/^\d/.test(text) && !/^[\d,.]+$/.test(text)) {
@@ -844,15 +844,26 @@ function positionFabNearChat() {
             return;
         }
 
-        // Leftmost button is the Points/Identity button
+        // Sort left to right
         allBtns.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
-        const pointsBtn = allBtns[0];
         
-        const btnRect = pointsBtn.getBoundingClientRect();
+        // The rightmost button is usually "Chat" or "Send"
+        const chatBtn = allBtns[allBtns.length - 1];
+        if (!chatBtn) return;
         
-        // Stick our FAB exactly to the right of the Points button
+        // The container holding the right group (Store, Settings, Chat)
+        const rightGroup = chatBtn.closest('.flex') || chatBtn.parentElement;
+        if (!rightGroup) return;
+
+        // The Store button is typically the first button in this right group
+        const storeBtn = rightGroup.querySelector('button');
+        if (!storeBtn) return;
+        
+        const btnRect = storeBtn.getBoundingClientRect();
+        
+        // Stick our FAB exactly to the left of the Store button
         fab.style.display = 'flex';
-        fab.style.left = `${btnRect.right + 12}px`; // 12px gap
+        fab.style.left = `${btnRect.left - 42}px`; // 42px to the left of the Store button
         fab.style.top = `${btnRect.top + (btnRect.height / 2) - 16}px`; // Center vertically
         fab.style.bottom = 'auto';
         fab.style.right = 'auto';
