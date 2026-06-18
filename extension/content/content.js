@@ -378,6 +378,8 @@ function scanExistingMessages() {
 
 function processMsg(node) {
     if (!node || !node.querySelector) return;
+    // Skip non-HTML elements (SVG, etc.) where className is not a string
+    if (typeof node.className !== 'string') return;
 
     // Kick uses a virtualized list - node might be a container with multiple messages
     // Find all individual message rows within this node
@@ -824,12 +826,10 @@ function positionFabNearChat() {
 
         // Find ALL buttons below the chat input area
         const allBtns = Array.from(document.querySelectorAll('button')).filter(b => {
-            if (b.id === 'shuls-fab') return false; // Skip our own button
+            if (b.id === 'shuls-fab') return false;
             const r = b.getBoundingClientRect();
             if (r.width === 0 || r.height === 0) return false;
-            // Must be below the chat input
             if (r.top < inputRect.bottom - 10) return false;
-            // Must be within the chat column horizontally
             if (r.right < inputRect.left - 80 || r.left > inputRect.right + 80) return false;
             return true;
         });
@@ -842,23 +842,34 @@ function positionFabNearChat() {
         // Sort left to right
         allBtns.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
 
-        // Try to find the Store button specifically (it usually has the cart icon and "0" text)
-        // The store button is typically the second button from the left in the bottom row
-        // Layout is: [Points/2540] [Store/0] ... [Settings] [Chat]
+        // Debug: log button texts once
+        if (!window._shulsBtnLogged) {
+            window._shulsBtnLogged = true;
+            allBtns.forEach((b, i) => {
+                const r = b.getBoundingClientRect();
+                console.log(`[Shuls] Bottom btn ${i}: text="${b.textContent.trim().substring(0,20)}" left=${Math.round(r.left)} top=${Math.round(r.top)} w=${Math.round(r.width)}`);
+            });
+        }
+
+        // Layout: [Points/2540] [Store/0] [Settings] [Chat]
+        // The Store button is the SECOND button from the left
         let targetBtn = null;
 
-        // Strategy 1: Look for button with "0" text (store with 0 kicks) on the left side
+        // Strategy 1: Find button containing cart/store SVG icon
         for (const btn of allBtns) {
-            const text = btn.textContent.trim();
-            const r = btn.getBoundingClientRect();
-            // Store button shows a number (kicks count) and is on the left half
-            if (r.left < inputRect.left + inputRect.width / 2 && /^\d+$/.test(text) && text !== '2540') {
-                targetBtn = btn;
-                break;
+            const svg = btn.querySelector('svg');
+            if (svg) {
+                const r = btn.getBoundingClientRect();
+                const text = btn.textContent.trim().replace(/\s+/g, '');
+                // Store button has an SVG + a small number, and is on the left side
+                if (r.left < inputRect.left + inputRect.width / 2 && /^\d{1,5}$/.test(text)) {
+                    targetBtn = btn;
+                    break;
+                }
             }
         }
 
-        // Strategy 2: Just pick the second button from left (Points=0, Store=1)
+        // Strategy 2: Second button from left if it's on the left half
         if (!targetBtn && allBtns.length > 1) {
             const r = allBtns[1].getBoundingClientRect();
             if (r.left < inputRect.left + inputRect.width / 2) {
@@ -866,14 +877,14 @@ function positionFabNearChat() {
             }
         }
 
-        // Strategy 3: Fall back to leftmost button
+        // Strategy 3: Fall back to leftmost
         if (!targetBtn) {
             targetBtn = allBtns[0];
         }
 
         const finalRect = targetBtn.getBoundingClientRect();
         
-        // Place our FAB to the RIGHT of the store button, at the exact same height
+        // Place FAB to the RIGHT of the store button, vertically centered
         fab.style.display = 'flex';
         fab.style.left = `${finalRect.right + 8}px`;
         fab.style.top = `${finalRect.top + (finalRect.height / 2) - 16}px`;
