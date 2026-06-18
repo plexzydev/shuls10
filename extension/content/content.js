@@ -802,52 +802,56 @@ function positionFabNearChat() {
             document.querySelector('#chatroom textarea') ||
             document.querySelector('[class*="chatroom"] textarea');
 
+        // Fallback positioning if Kick's UI hasn't loaded or crashed
+        const useFallbackPosition = () => {
+            fab.style.display = 'flex';
+            fab.style.top = 'auto';
+            fab.style.left = 'auto';
+            fab.style.bottom = '80px';
+            fab.style.right = '20px';
+        };
+
         if (!chatInput) {
-            fab.style.display = 'none';
+            useFallbackPosition();
             return;
         }
 
         const inputRect = chatInput.getBoundingClientRect();
-        if (inputRect.width === 0) {
-            fab.style.display = 'none';
+        if (inputRect.width === 0 || inputRect.height === 0) {
+            useFallbackPosition();
             return;
         }
 
         // Find Kick buttons below the chat input
         const allBtns = Array.from(document.querySelectorAll('button')).filter(b => {
             const r = b.getBoundingClientRect();
-            // Must be strictly below the top of the input
-            return r.width > 0 && r.top > inputRect.top && b.closest('[class*="chat"]');
+            // Must be roughly below the top of the input and within the chat's horizontal bounds
+            return r.width > 0 && r.top >= inputRect.top - 5 && r.left >= inputRect.left - 50 && r.right <= inputRect.right + 50;
         });
 
         if (allBtns.length === 0) {
-            fab.style.display = 'none';
+            useFallbackPosition();
             return;
         }
 
-        // Find all buttons on the LEFT half of the chat area
-        const leftHalfBtns = allBtns.filter(b => {
-            const r = b.getBoundingClientRect();
-            return (r.left + r.width / 2) < (inputRect.left + inputRect.width / 2);
-        });
+        // Sort all buttons by X coordinate (left to right)
+        allBtns.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
 
-        if (leftHalfBtns.length === 0) {
-            fab.style.display = 'none';
-            return;
+        // In Kick, the left group usually contains Points (0) and Store (1).
+        let targetBtn = allBtns.length > 1 ? allBtns[1] : allBtns[0];
+
+        // Ensure we are targeting a button on the left side of the chat.
+        const tRect = targetBtn.getBoundingClientRect();
+        if (tRect.left > inputRect.left + inputRect.width / 2) {
+            targetBtn = allBtns[0]; // Fallback to leftmost button
         }
 
-        // Sort left to right
-        leftHalfBtns.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
+        const finalRect = targetBtn.getBoundingClientRect();
         
-        // The rightmost button in the left group is the Store button
-        // (usually Points is leftHalfBtns[0] and Store is leftHalfBtns[1])
-        const targetBtn = leftHalfBtns[leftHalfBtns.length - 1];
-        const btnRect = targetBtn.getBoundingClientRect();
-        
-        // Stick our FAB exactly to the RIGHT of the Store button
+        // Stick our FAB exactly to the RIGHT of the target button (Store button)
         fab.style.display = 'flex';
-        fab.style.left = `${btnRect.right + 12}px`; // 12px gap
-        fab.style.top = `${btnRect.top + (btnRect.height / 2) - 16}px`; // Center vertically
+        fab.style.left = `${finalRect.right + 12}px`; // 12px gap
+        fab.style.top = `${finalRect.top + (finalRect.height / 2) - 16}px`; // Center vertically
         fab.style.bottom = 'auto';
         fab.style.right = 'auto';
 
