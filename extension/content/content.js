@@ -812,68 +812,93 @@ function positionFabNearChat() {
             return;
         }
 
-        // APPROACH: Find the bottom bar by locating the points display (e.g. "2540")
-        // then find the store button (shows a number like "0") next to it
+        // APPROACH: Search ALL elements below the chat input for the store/points bar.
+        // Kick doesn't necessarily use <button> elements for points/store.
         
-        // Look for the bottom bar: it's typically below the chat input
-        // Search for ANY element containing the points number that's below the input
-        let storeBtn = null;
-        let pointsBtn = null;
-        
-        // Find all clickable elements (buttons, links) below the chat input
-        const belowInputEls = Array.from(document.querySelectorAll('button, a[role="button"]')).filter(el => {
-            if (el.id === 'shuls-fab') return false;
-            const r = el.getBoundingClientRect();
-            return r.width > 0 && r.height > 0 && r.top >= inputRect.bottom - 15;
-        });
-
-        // Sort left to right
-        belowInputEls.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
-
-        // Debug: log once
-        if (!window._shulsBtnLogged) {
-            window._shulsBtnLogged = true;
-            console.log(`[Shuls] Found ${belowInputEls.length} elements below chat input:`);
-            belowInputEls.forEach((b, i) => {
-                const r = b.getBoundingClientRect();
-                console.log(`[Shuls]   #${i}: tag=${b.tagName} text="${b.textContent.trim().substring(0,30)}" left=${Math.round(r.left)} top=${Math.round(r.top)} bottom=${Math.round(r.bottom)}`);
-            });
+        // Find the bottom bar container: walk down from the chat input's parent
+        // to find the row that contains the points/store/chat buttons
+        let bottomBar = null;
+        let el = chatInput.parentElement;
+        while (el && !bottomBar) {
+            // Look for a sibling or child that is below the input
+            const siblings = el.parentElement ? Array.from(el.parentElement.children) : [];
+            for (const sib of siblings) {
+                const r = sib.getBoundingClientRect();
+                if (r.top >= inputRect.bottom - 5 && r.height > 0 && r.height < 80) {
+                    bottomBar = sib;
+                    break;
+                }
+            }
+            el = el.parentElement;
         }
 
-        if (belowInputEls.length === 0) {
+        // Debug: log what we found
+        if (!window._shulsBtnLogged) {
+            window._shulsBtnLogged = true;
+            if (bottomBar) {
+                console.log(`[Shuls] Found bottom bar:`, bottomBar.tagName, bottomBar.className, `text="${bottomBar.textContent.trim().substring(0,60)}"`);
+                const children = Array.from(bottomBar.querySelectorAll('*')).filter(c => {
+                    const r = c.getBoundingClientRect();
+                    return r.width > 10 && r.height > 10;
+                });
+                children.slice(0, 15).forEach((c, i) => {
+                    const r = c.getBoundingClientRect();
+                    console.log(`[Shuls]   child#${i}: <${c.tagName}> class="${(c.className||'').toString().substring(0,40)}" text="${c.textContent.trim().substring(0,20)}" left=${Math.round(r.left)} w=${Math.round(r.width)}`);
+                });
+            } else {
+                console.log('[Shuls] Could NOT find bottom bar below chat input');
+            }
+        }
+
+        if (!bottomBar) {
             useFallbackPosition();
             return;
         }
 
-        // Find the points button (contains "2540" or similar large number) 
-        // and store button (contains small number like "0") 
-        for (const el of belowInputEls) {
-            const text = el.textContent.trim().replace(/[,.\s]/g, '');
-            if (/^\d+$/.test(text)) {
-                const num = parseInt(text);
-                if (num > 100) {
-                    // This is likely the Points button
-                    pointsBtn = el;
-                } else {
-                    // This is likely the Store button (small number like 0)
-                    if (!storeBtn) storeBtn = el;
-                }
+        // Now find the Store element inside the bottom bar
+        // The store shows a small number (like "0") next to a cart icon
+        // Points shows a larger number (like "2540")
+        const barRect = bottomBar.getBoundingClientRect();
+        
+        // Get all direct interactive/visible children in the bottom bar
+        const barChildren = Array.from(bottomBar.children).filter(c => {
+            const r = c.getBoundingClientRect();
+            return r.width > 10 && r.height > 10;
+        });
+
+        // Sort left to right
+        barChildren.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
+
+        // The layout is typically: [Points] [Store] ... [Settings] [Chat]
+        // Points is index 0, Store is index 1
+        let targetEl = null;
+        
+        // Try to find by content: store has a small number
+        for (const child of barChildren) {
+            const text = child.textContent.trim().replace(/[,.\s]/g, '');
+            if (/^\d{1,3}$/.test(text)) {
+                // Small number = likely store (kicks count)
+                targetEl = child;
+                break;
             }
         }
 
-        // If we found the store button, target it
-        // If not, try the second element from the left (skip points)
-        let targetBtn = storeBtn;
-        if (!targetBtn && belowInputEls.length > 1) {
-            targetBtn = belowInputEls[1];
+        // Fallback: second child from the left
+        if (!targetEl && barChildren.length > 1) {
+            targetEl = barChildren[1];
         }
-        if (!targetBtn) {
-            targetBtn = belowInputEls[0];
+        if (!targetEl && barChildren.length > 0) {
+            targetEl = barChildren[0];
         }
 
-        const finalRect = targetBtn.getBoundingClientRect();
+        if (!targetEl) {
+            useFallbackPosition();
+            return;
+        }
+
+        const finalRect = targetEl.getBoundingClientRect();
         
-        // Place FAB to the RIGHT of the store button, at the same vertical center
+        // Place FAB to the RIGHT of the store element, vertically centered
         fab.style.display = 'flex';
         fab.style.left = `${finalRect.right + 8}px`;
         fab.style.top = `${finalRect.top + (finalRect.height / 2) - 16}px`;
