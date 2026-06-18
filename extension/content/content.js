@@ -822,11 +822,13 @@ function positionFabNearChat() {
             return;
         }
 
-        // Find Kick buttons below the chat input
+        // Find Kick buttons in the bottom row (Points, Store, Settings, Chat)
         const allBtns = Array.from(document.querySelectorAll('button')).filter(b => {
             const r = b.getBoundingClientRect();
-            // Must be roughly below the top of the input and within the chat's horizontal bounds
-            return r.width > 0 && r.top >= inputRect.top - 5 && r.left >= inputRect.left - 50 && r.right <= inputRect.right + 50;
+            // Must be visible and inside chat
+            if (r.width === 0 || !(b.closest('[class*="chat"]') || b.closest('#chatroom'))) return false;
+            // Must be roughly at the same vertical level as the bottom of the input (bottom row)
+            return r.bottom >= inputRect.bottom - 25;
         });
 
         if (allBtns.length === 0) {
@@ -837,18 +839,26 @@ function positionFabNearChat() {
         // Sort all buttons by X coordinate (left to right)
         allBtns.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
 
-        // In Kick, the left group usually contains Points (0) and Store (1).
-        let targetBtn = allBtns.length > 1 ? allBtns[1] : allBtns[0];
+        // In Kick's bottom row, the left-most button is Points. The next one is Store.
+        let targetBtn = allBtns[0];
 
-        // Ensure we are targeting a button on the left side of the chat.
-        const tRect = targetBtn.getBoundingClientRect();
-        if (tRect.left > inputRect.left + inputRect.width / 2) {
-            targetBtn = allBtns[0]; // Fallback to leftmost button
+        // If there's a second button and it's on the left half of the screen, it's the Store button.
+        if (allBtns.length > 1) {
+            const secondRect = allBtns[1].getBoundingClientRect();
+            if (secondRect.left < inputRect.left + (inputRect.width / 1.5)) {
+                targetBtn = allBtns[1];
+            }
+        }
+
+        // If we can find the store button by its specific SVG, even better:
+        const exactStoreBtn = allBtns.find(b => b.innerHTML.includes('path') && (b.textContent.includes('KICKS') || b.textContent.trim().length < 5));
+        if (exactStoreBtn && exactStoreBtn.getBoundingClientRect().left < inputRect.left + (inputRect.width / 1.5)) {
+            // targetBtn = exactStoreBtn; // optional strict targeting
         }
 
         const finalRect = targetBtn.getBoundingClientRect();
         
-        // Stick our FAB exactly to the RIGHT of the target button (Store button)
+        // Stick our FAB exactly to the RIGHT of the target button
         fab.style.display = 'flex';
         fab.style.left = `${finalRect.right + 12}px`; // 12px gap
         fab.style.top = `${finalRect.top + (finalRect.height / 2) - 16}px`; // Center vertically
