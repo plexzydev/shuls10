@@ -816,8 +816,8 @@ function positionFabNearChat() {
         // Find Kick buttons below the chat input
         const allBtns = Array.from(document.querySelectorAll('button')).filter(b => {
             const r = b.getBoundingClientRect();
-            // Button must be below the chat input to avoid emote bar
-            return r.width > 0 && r.top > inputRect.top - 10 && b.closest('[class*="chat"]');
+            // Must be strictly below the top of the input
+            return r.width > 0 && r.top > inputRect.top && b.closest('[class*="chat"]');
         });
 
         if (allBtns.length === 0) {
@@ -825,26 +825,28 @@ function positionFabNearChat() {
             return;
         }
 
-        // Sort left to right
-        allBtns.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
-        
-        // The rightmost button is usually "Chat" or "Send"
-        const chatBtn = allBtns[allBtns.length - 1];
-        if (!chatBtn) return;
-        
-        // The container holding the right group (Store, Settings, Chat)
-        const rightGroup = chatBtn.closest('.flex') || chatBtn.parentElement;
-        if (!rightGroup) return;
+        // Find all buttons on the LEFT half of the chat area
+        const leftHalfBtns = allBtns.filter(b => {
+            const r = b.getBoundingClientRect();
+            return (r.left + r.width / 2) < (inputRect.left + inputRect.width / 2);
+        });
 
-        // The Store button is typically the first button in this right group
-        const storeBtn = rightGroup.querySelector('button');
-        if (!storeBtn) return;
+        if (leftHalfBtns.length === 0) {
+            fab.style.display = 'none';
+            return;
+        }
+
+        // Sort left to right
+        leftHalfBtns.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
         
-        const btnRect = storeBtn.getBoundingClientRect();
+        // The rightmost button in the left group is the Store button
+        // (usually Points is leftHalfBtns[0] and Store is leftHalfBtns[1])
+        const targetBtn = leftHalfBtns[leftHalfBtns.length - 1];
+        const btnRect = targetBtn.getBoundingClientRect();
         
-        // Stick our FAB exactly to the left of the Store button
+        // Stick our FAB exactly to the RIGHT of the Store button
         fab.style.display = 'flex';
-        fab.style.left = `${btnRect.left - 42}px`; // 42px to the left of the Store button
+        fab.style.left = `${btnRect.right + 12}px`; // 12px gap
         fab.style.top = `${btnRect.top + (btnRect.height / 2) - 16}px`; // Center vertically
         fab.style.bottom = 'auto';
         fab.style.right = 'auto';
