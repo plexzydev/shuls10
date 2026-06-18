@@ -819,26 +819,32 @@ function positionFabNearChat() {
         const inputRect = chatInput.getBoundingClientRect();
         if (inputRect.width === 0) return;
 
+        const chatContainer = chatInput.closest('#chatroom') || chatInput.closest('[class*="chatroom"]') || document.body;
+        const chatRect = chatContainer.getBoundingClientRect();
+
         const root = document.getElementById('shuls-ext-root');
         const fab = document.getElementById('shuls-fab');
         const panel = document.getElementById('shuls-panel');
         if (!root || !fab) return;
 
-        // Position the root container fixed, right side of the chat input bar
+        // Kick's points are usually above the input or on the left.
+        // Position the root container fixed, left side, just above the chat input
         root.style.position = 'fixed';
-        root.style.bottom = `${window.innerHeight - inputRect.bottom + (inputRect.height / 2) - 20}px`;
-        root.style.right = `${window.innerWidth - inputRect.right + inputRect.width + 8}px`;
+        root.style.bottom = `${window.innerHeight - inputRect.top + 10}px`; // 10px above the input box
+        root.style.left = `${chatRect.left + 20}px`; // 20px from the left edge of the chatroom
+        root.style.right = 'auto';
         root.style.zIndex = '999999';
 
-        // Make the panel open upward from the button
+        // Make the panel open upward and rightward from the button
         if (panel) {
             panel.style.position = 'absolute';
             panel.style.bottom = '48px';
-            panel.style.right = '0';
+            panel.style.left = '0';
+            panel.style.right = 'auto';
         }
 
         clearInterval(iv);
-        console.log('[Shuls] ✅ Button positioned near chat input');
+        console.log('[Shuls] ✅ Button positioned near chat input on the left');
     }, 800);
 }
 function formatDetailedTime(totalMinutes) {
