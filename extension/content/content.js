@@ -377,7 +377,6 @@ function scanExistingMessages() {
 }
 
 function processMsg(node) {
-function processMsg(node) {
     if (!node || !node.querySelector) return;
 
     // Kick uses a virtualized list - node might be a container with multiple messages
