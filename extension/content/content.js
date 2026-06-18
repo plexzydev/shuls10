@@ -822,13 +822,16 @@ function positionFabNearChat() {
             return;
         }
 
-        // Find Kick buttons in the bottom row (Points, Store, Settings, Chat)
+        // Find ALL buttons below the chat input area
         const allBtns = Array.from(document.querySelectorAll('button')).filter(b => {
+            if (b.id === 'shuls-fab') return false; // Skip our own button
             const r = b.getBoundingClientRect();
-            // Must be visible and inside chat
-            if (r.width === 0 || !(b.closest('[class*="chat"]') || b.closest('#chatroom'))) return false;
-            // Must be roughly at the same vertical level as the bottom of the input (bottom row)
-            return r.bottom >= inputRect.bottom - 25;
+            if (r.width === 0 || r.height === 0) return false;
+            // Must be below the chat input
+            if (r.top < inputRect.bottom - 10) return false;
+            // Must be within the chat column horizontally
+            if (r.right < inputRect.left - 80 || r.left > inputRect.right + 80) return false;
+            return true;
         });
 
         if (allBtns.length === 0) {
@@ -836,32 +839,44 @@ function positionFabNearChat() {
             return;
         }
 
-        // Sort all buttons by X coordinate (left to right)
+        // Sort left to right
         allBtns.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
 
-        // In Kick's bottom row, the left-most button is Points. The next one is Store.
-        let targetBtn = allBtns[0];
+        // Try to find the Store button specifically (it usually has the cart icon and "0" text)
+        // The store button is typically the second button from the left in the bottom row
+        // Layout is: [Points/2540] [Store/0] ... [Settings] [Chat]
+        let targetBtn = null;
 
-        // If there's a second button and it's on the left half of the screen, it's the Store button.
-        if (allBtns.length > 1) {
-            const secondRect = allBtns[1].getBoundingClientRect();
-            if (secondRect.left < inputRect.left + (inputRect.width / 1.5)) {
+        // Strategy 1: Look for button with "0" text (store with 0 kicks) on the left side
+        for (const btn of allBtns) {
+            const text = btn.textContent.trim();
+            const r = btn.getBoundingClientRect();
+            // Store button shows a number (kicks count) and is on the left half
+            if (r.left < inputRect.left + inputRect.width / 2 && /^\d+$/.test(text) && text !== '2540') {
+                targetBtn = btn;
+                break;
+            }
+        }
+
+        // Strategy 2: Just pick the second button from left (Points=0, Store=1)
+        if (!targetBtn && allBtns.length > 1) {
+            const r = allBtns[1].getBoundingClientRect();
+            if (r.left < inputRect.left + inputRect.width / 2) {
                 targetBtn = allBtns[1];
             }
         }
 
-        // If we can find the store button by its specific SVG, even better:
-        const exactStoreBtn = allBtns.find(b => b.innerHTML.includes('path') && (b.textContent.includes('KICKS') || b.textContent.trim().length < 5));
-        if (exactStoreBtn && exactStoreBtn.getBoundingClientRect().left < inputRect.left + (inputRect.width / 1.5)) {
-            // targetBtn = exactStoreBtn; // optional strict targeting
+        // Strategy 3: Fall back to leftmost button
+        if (!targetBtn) {
+            targetBtn = allBtns[0];
         }
 
         const finalRect = targetBtn.getBoundingClientRect();
         
-        // Stick our FAB exactly to the RIGHT of the target button
+        // Place our FAB to the RIGHT of the store button, at the exact same height
         fab.style.display = 'flex';
-        fab.style.left = `${finalRect.right + 12}px`; // 12px gap
-        fab.style.top = `${finalRect.top + (finalRect.height / 2) - 16}px`; // Center vertically
+        fab.style.left = `${finalRect.right + 8}px`;
+        fab.style.top = `${finalRect.top + (finalRect.height / 2) - 16}px`;
         fab.style.bottom = 'auto';
         fab.style.right = 'auto';
 
