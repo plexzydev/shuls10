@@ -516,24 +516,12 @@ function detectRoleNearUsername(node, usernameEl) {
             let role = null;
             if (all.includes('owner') || all.includes('broadcaster') || all.includes('streamer')) {
                 role = 'broadcaster';
-            } else if (all.includes('moderator') || all.includes('mod')) {
+            } else if (all.includes('moderator') || /\bmod\b/.test(all)) {
                 role = 'moderator';
             } else if (all.includes('vip')) {
                 role = 'vip';
-            } else if (all.includes('sub') || all.includes('subscriber')) {
+            } else if (all.includes('subscriber')) {
                 role = 'subscriber';
-            }
-
-            // If no text-based detection, check if it's a small badge icon (Kick uses small green sword for mod, etc)
-            // Any small icon (<24px) that's not a profile pic is likely a badge
-            if (!role && (icon.tagName === 'svg' || (icon.tagName === 'IMG' && src.includes('badge')))) {
-                // Check SVG content for known paths/shapes
-                if (icon.tagName === 'svg') {
-                    const svgHTML = icon.outerHTML?.toLowerCase() || '';
-                    if (svgHTML.includes('m11') || svgHTML.includes('sword') || svgHTML.includes('shield')) {
-                        role = 'moderator';
-                    }
-                }
             }
 
             if (role && (!highestRole || rolePriority[role] > rolePriority[highestRole])) {
@@ -550,9 +538,9 @@ function detectRoleNearUsername(node, usernameEl) {
             
             let role = null;
             if (all.includes('owner') || all.includes('broadcaster')) role = 'broadcaster';
-            else if (all.includes('moderator') || all.includes('mod')) role = 'moderator';
+            else if (all.includes('moderator') || /\bmod\b/.test(all)) role = 'moderator';
             else if (all.includes('vip')) role = 'vip';
-            else if (all.includes('subscriber') || all.includes('sub')) role = 'subscriber';
+            else if (all.includes('subscriber')) role = 'subscriber';
 
             if (role && (!highestRole || rolePriority[role] > rolePriority[highestRole])) {
                 highestRole = role;
@@ -824,67 +812,68 @@ function positionFabNearChat() {
             return;
         }
 
-        // Find ALL buttons below the chat input area
-        const allBtns = Array.from(document.querySelectorAll('button')).filter(b => {
-            if (b.id === 'shuls-fab') return false;
-            const r = b.getBoundingClientRect();
-            if (r.width === 0 || r.height === 0) return false;
-            if (r.top < inputRect.bottom - 10) return false;
-            if (r.right < inputRect.left - 80 || r.left > inputRect.right + 80) return false;
-            return true;
+        // APPROACH: Find the bottom bar by locating the points display (e.g. "2540")
+        // then find the store button (shows a number like "0") next to it
+        
+        // Look for the bottom bar: it's typically below the chat input
+        // Search for ANY element containing the points number that's below the input
+        let storeBtn = null;
+        let pointsBtn = null;
+        
+        // Find all clickable elements (buttons, links) below the chat input
+        const belowInputEls = Array.from(document.querySelectorAll('button, a[role="button"]')).filter(el => {
+            if (el.id === 'shuls-fab') return false;
+            const r = el.getBoundingClientRect();
+            return r.width > 0 && r.height > 0 && r.top >= inputRect.bottom - 15;
         });
 
-        if (allBtns.length === 0) {
+        // Sort left to right
+        belowInputEls.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
+
+        // Debug: log once
+        if (!window._shulsBtnLogged) {
+            window._shulsBtnLogged = true;
+            console.log(`[Shuls] Found ${belowInputEls.length} elements below chat input:`);
+            belowInputEls.forEach((b, i) => {
+                const r = b.getBoundingClientRect();
+                console.log(`[Shuls]   #${i}: tag=${b.tagName} text="${b.textContent.trim().substring(0,30)}" left=${Math.round(r.left)} top=${Math.round(r.top)} bottom=${Math.round(r.bottom)}`);
+            });
+        }
+
+        if (belowInputEls.length === 0) {
             useFallbackPosition();
             return;
         }
 
-        // Sort left to right
-        allBtns.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
-
-        // Debug: log button texts once
-        if (!window._shulsBtnLogged) {
-            window._shulsBtnLogged = true;
-            allBtns.forEach((b, i) => {
-                const r = b.getBoundingClientRect();
-                console.log(`[Shuls] Bottom btn ${i}: text="${b.textContent.trim().substring(0,20)}" left=${Math.round(r.left)} top=${Math.round(r.top)} w=${Math.round(r.width)}`);
-            });
-        }
-
-        // Layout: [Points/2540] [Store/0] [Settings] [Chat]
-        // The Store button is the SECOND button from the left
-        let targetBtn = null;
-
-        // Strategy 1: Find button containing cart/store SVG icon
-        for (const btn of allBtns) {
-            const svg = btn.querySelector('svg');
-            if (svg) {
-                const r = btn.getBoundingClientRect();
-                const text = btn.textContent.trim().replace(/\s+/g, '');
-                // Store button has an SVG + a small number, and is on the left side
-                if (r.left < inputRect.left + inputRect.width / 2 && /^\d{1,5}$/.test(text)) {
-                    targetBtn = btn;
-                    break;
+        // Find the points button (contains "2540" or similar large number) 
+        // and store button (contains small number like "0") 
+        for (const el of belowInputEls) {
+            const text = el.textContent.trim().replace(/[,.\s]/g, '');
+            if (/^\d+$/.test(text)) {
+                const num = parseInt(text);
+                if (num > 100) {
+                    // This is likely the Points button
+                    pointsBtn = el;
+                } else {
+                    // This is likely the Store button (small number like 0)
+                    if (!storeBtn) storeBtn = el;
                 }
             }
         }
 
-        // Strategy 2: Second button from left if it's on the left half
-        if (!targetBtn && allBtns.length > 1) {
-            const r = allBtns[1].getBoundingClientRect();
-            if (r.left < inputRect.left + inputRect.width / 2) {
-                targetBtn = allBtns[1];
-            }
+        // If we found the store button, target it
+        // If not, try the second element from the left (skip points)
+        let targetBtn = storeBtn;
+        if (!targetBtn && belowInputEls.length > 1) {
+            targetBtn = belowInputEls[1];
         }
-
-        // Strategy 3: Fall back to leftmost
         if (!targetBtn) {
-            targetBtn = allBtns[0];
+            targetBtn = belowInputEls[0];
         }
 
         const finalRect = targetBtn.getBoundingClientRect();
         
-        // Place FAB to the RIGHT of the store button, vertically centered
+        // Place FAB to the RIGHT of the store button, at the same vertical center
         fab.style.display = 'flex';
         fab.style.left = `${finalRect.right + 8}px`;
         fab.style.top = `${finalRect.top + (finalRect.height / 2) - 16}px`;
