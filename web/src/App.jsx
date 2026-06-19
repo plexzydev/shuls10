@@ -15,7 +15,6 @@ const Leaderboard = lazy(() => import('./pages/Leaderboard'));
 const Challenges = lazy(() => import('./pages/Challenges'));
 const Clips = lazy(() => import('./pages/Clips'));
 const Profile = lazy(() => import('./pages/Profile'));
-const AIChat = lazy(() => import('./pages/AIChat'));
 const AuthCallback = lazy(() => import('./pages/AuthCallback'));
 
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -171,11 +170,6 @@ function App() {
           <Route path="/profile" element={
             <Suspense fallback={<PageLoader />}>
               <Profile user={user} token={token} onUpdate={fetchUser} />
-            </Suspense>
-          } />
-          <Route path="/aichat" element={
-            <Suspense fallback={<PageLoader />}>
-              <AIChat />
             </Suspense>
           } />
         </Route>
