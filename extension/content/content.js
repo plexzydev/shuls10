@@ -798,7 +798,7 @@ function positionFabNearChat() {
         fab.style.display = 'flex';
 
         // Set to 'auto' to ignore, or a pixel value like '100px'
-        fab.style.right = '154px';   // Distance from right side of screen
+        fab.style.right = '150px';   // Distance from right side of screen
         fab.style.bottom = '12px';   // Distance from bottom of screen
         fab.style.left = 'auto';
         fab.style.top = 'auto';
