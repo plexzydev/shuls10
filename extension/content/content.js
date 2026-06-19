@@ -787,11 +787,6 @@ function positionFabNearChat() {
         if (!shulsActive) return;
         requestAnimationFrame(syncPosition);
 
-        const chatInput = document.querySelector('#message-input') ||
-            document.querySelector('[data-chat-input]') ||
-            document.querySelector('#chatroom textarea') ||
-            document.querySelector('[class*="chatroom"] textarea');
-
         // Fallback positioning if Kick's UI hasn't loaded or crashed
         const useFallbackPosition = () => {
             fab.style.display = 'flex';
@@ -800,17 +795,6 @@ function positionFabNearChat() {
             fab.style.bottom = '80px';
             fab.style.right = '20px';
         };
-
-        if (!chatInput) {
-            useFallbackPosition();
-            return;
-        }
-
-        const inputRect = chatInput.getBoundingClientRect();
-        if (inputRect.width === 0 || inputRect.height === 0) {
-            useFallbackPosition();
-            return;
-        }
 
         // APPROACH: Find the green "Chat" button, go up to its container (the bottom bar),
         // and find the store button on the left side of that bar.
@@ -891,7 +875,7 @@ function positionFabNearChat() {
         if (!targetEl) {
             const chatRect = chatBtn.getBoundingClientRect();
             fab.style.display = 'flex';
-            fab.style.left = `${chatRect.left - 40}px`;
+            fab.style.left = `${chatRect.left - 100}px`;
             fab.style.top = `${chatRect.top + (chatRect.height / 2) - 16}px`;
             fab.style.bottom = 'auto';
             fab.style.right = 'auto';
@@ -902,8 +886,8 @@ function positionFabNearChat() {
         
         // Place FAB to the RIGHT of the target element, vertically centered
         fab.style.display = 'flex';
-        fab.style.left = `${finalRect.right + 8}px`;
-        fab.style.top = `${finalRect.top + (finalRect.height / 2) - 16}px`;
+        fab.style.left = `${finalRect.right + 200}px`;
+        fab.style.top = `${finalRect.top + (finalRect.height / 2) - 20}px`;
         fab.style.bottom = 'auto';
         fab.style.right = 'auto';
 
