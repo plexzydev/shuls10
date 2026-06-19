@@ -812,42 +812,34 @@ function positionFabNearChat() {
             return;
         }
 
-        // APPROACH: Search ALL elements below the chat input for the store/points bar.
-        // Kick doesn't necessarily use <button> elements for points/store.
-        
-        // Find the bottom bar container: walk down from the chat input's parent
-        // to find the row that contains the points/store/chat buttons
-        let bottomBar = null;
-        let el = chatInput.parentElement;
-        while (el && !bottomBar) {
-            // Look for a sibling or child that is below the input
-            const siblings = el.parentElement ? Array.from(el.parentElement.children) : [];
-            for (const sib of siblings) {
-                const r = sib.getBoundingClientRect();
-                if (r.top >= inputRect.bottom - 5 && r.height > 0 && r.height < 80) {
-                    bottomBar = sib;
-                    break;
-                }
-            }
-            el = el.parentElement;
+        // APPROACH: Find the green "Chat" button, go up to its container (the bottom bar),
+        // and find the store button on the left side of that bar.
+
+        // 1. Find the Chat button
+        const allBtns = Array.from(document.querySelectorAll('button'));
+        let chatBtn = allBtns.find(b => {
+            const text = b.textContent.trim().toLowerCase();
+            return text === 'chat' || text === 'send' || text === 'enviar';
+        });
+
+        if (!chatBtn) {
+            // Fallback: look for a bright green button at the bottom
+            chatBtn = allBtns.find(b => {
+                const style = window.getComputedStyle(b);
+                return style.backgroundColor === 'rgb(83, 224, 115)' || style.backgroundColor === 'rgb(34, 197, 94)';
+            });
         }
 
-        // Debug: log what we found
-        if (!window._shulsBtnLogged) {
-            window._shulsBtnLogged = true;
-            if (bottomBar) {
-                console.log(`[Shuls] Found bottom bar:`, bottomBar.tagName, bottomBar.className, `text="${bottomBar.textContent.trim().substring(0,60)}"`);
-                const children = Array.from(bottomBar.querySelectorAll('*')).filter(c => {
-                    const r = c.getBoundingClientRect();
-                    return r.width > 10 && r.height > 10;
-                });
-                children.slice(0, 15).forEach((c, i) => {
-                    const r = c.getBoundingClientRect();
-                    console.log(`[Shuls]   child#${i}: <${c.tagName}> class="${(c.className||'').toString().substring(0,40)}" text="${c.textContent.trim().substring(0,20)}" left=${Math.round(r.left)} w=${Math.round(r.width)}`);
-                });
-            } else {
-                console.log('[Shuls] Could NOT find bottom bar below chat input');
-            }
+        if (!chatBtn) {
+            useFallbackPosition();
+            return;
+        }
+
+        // 2. Find the bottom bar container
+        let bottomBar = chatBtn.parentElement;
+        // Go up until we find a container that spans the chat width (>200px)
+        while (bottomBar && bottomBar.getBoundingClientRect().width < 200) {
+            bottomBar = bottomBar.parentElement;
         }
 
         if (!bottomBar) {
@@ -855,57 +847,67 @@ function positionFabNearChat() {
             return;
         }
 
-        // Now find the Store element inside the bottom bar
-        // The store shows a small number (like "0") next to a cart icon
-        // Points shows a larger number (like "2540")
+        // 3. Find elements inside the left side of the bottom bar
         const barRect = bottomBar.getBoundingClientRect();
         
-        // Get all direct interactive/visible children in the bottom bar
-        const barChildren = Array.from(bottomBar.children).filter(c => {
-            const r = c.getBoundingClientRect();
-            return r.width > 10 && r.height > 10;
+        // Get direct children or close descendants that look like buttons/items
+        let candidates = Array.from(bottomBar.querySelectorAll('button, a, div[role="button"], div.flex > div.flex > div.flex'));
+        
+        // If we didn't find much, just grab all divs that have an SVG and text
+        if (candidates.length < 3) {
+            candidates = Array.from(bottomBar.querySelectorAll('div')).filter(d => d.querySelector('svg') && d.textContent.trim().length > 0);
+        }
+
+        const leftItems = candidates.filter(el => {
+            if (el.id === 'shuls-fab') return false;
+            const r = el.getBoundingClientRect();
+            // Must have some size and be on the left half of the bar
+            return r.width >= 10 && r.height >= 10 && r.left < barRect.left + (barRect.width / 2);
         });
 
-        // Sort left to right
-        barChildren.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
+        // Filter out items that contain other items from our list to only get the deepest elements
+        const leafItems = leftItems.filter(el => {
+            return !leftItems.some(other => other !== el && el.contains(other));
+        });
 
-        // The layout is typically: [Points] [Store] ... [Settings] [Chat]
-        // Points is index 0, Store is index 1
+        leafItems.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
+
         let targetEl = null;
-        
-        // Try to find by content: store has a small number
-        for (const child of barChildren) {
-            const text = child.textContent.trim().replace(/[,.\s]/g, '');
+
+        // Try to find the store (small number)
+        for (const el of leafItems) {
+            const text = el.textContent.trim().replace(/[,.\s]/g, '');
             if (/^\d{1,3}$/.test(text)) {
-                // Small number = likely store (kicks count)
-                targetEl = child;
-                break;
+                targetEl = el;
+                break; // Found store
             }
         }
 
-        // Fallback: second child from the left
-        if (!targetEl && barChildren.length > 1) {
-            targetEl = barChildren[1];
-        }
-        if (!targetEl && barChildren.length > 0) {
-            targetEl = barChildren[0];
-        }
+        // Fallbacks
+        if (!targetEl && leafItems.length > 1) targetEl = leafItems[1];
+        if (!targetEl && leafItems.length > 0) targetEl = leafItems[0];
 
+        // If we still didn't find the left items, fallback to placing it left of the Chat button
         if (!targetEl) {
-            useFallbackPosition();
+            const chatRect = chatBtn.getBoundingClientRect();
+            fab.style.display = 'flex';
+            fab.style.left = `${chatRect.left - 40}px`;
+            fab.style.top = `${chatRect.top + (chatRect.height / 2) - 16}px`;
+            fab.style.bottom = 'auto';
+            fab.style.right = 'auto';
             return;
         }
 
         const finalRect = targetEl.getBoundingClientRect();
         
-        // Place FAB to the RIGHT of the store element, vertically centered
+        // Place FAB to the RIGHT of the target element, vertically centered
         fab.style.display = 'flex';
         fab.style.left = `${finalRect.right + 8}px`;
         fab.style.top = `${finalRect.top + (finalRect.height / 2) - 16}px`;
         fab.style.bottom = 'auto';
         fab.style.right = 'auto';
 
-        // Also sync panel position if it's open
+        // Sync panel position if open
         const panel = document.getElementById('shuls-panel');
         if (panel && !panel.classList.contains('hidden')) {
             const fabRect = fab.getBoundingClientRect();
