@@ -813,7 +813,12 @@ function positionFabNearChat() {
             const fabRect = fab.getBoundingClientRect();
             panel.style.position = 'fixed';
             panel.style.bottom = `${window.innerHeight - fabRect.top + 10}px`;
-            panel.style.left = `${fabRect.left - 200}px`;
+            
+            // Keep panel horizontally bounded within the screen
+            const panelWidth = Math.min(320, window.innerWidth * 0.9);
+            let leftPos = fabRect.right - panelWidth;
+            if (leftPos < 10) leftPos = 10;
+            panel.style.left = `${leftPos}px`;
         }
         
         requestAnimationFrame(syncPosition);
