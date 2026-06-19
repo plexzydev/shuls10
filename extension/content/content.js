@@ -798,8 +798,8 @@ function positionFabNearChat() {
         fab.style.display = 'flex';
 
         // Set to 'auto' to ignore, or a pixel value like '100px'
-        fab.style.right = '150px';   // Distance from right side of screen
-        fab.style.bottom = '10px';   // Distance from bottom of screen
+        fab.style.right = '154px';   // Distance from right side of screen
+        fab.style.bottom = '12px';   // Distance from bottom of screen
         fab.style.left = 'auto';
         fab.style.top = 'auto';
         
@@ -852,7 +852,15 @@ async function loadPanel() {
         
         const ptsText = document.getElementById('shuls-fab-points');
         if (ptsText && panelUserData && panelUserData.points !== undefined) {
-            ptsText.textContent = panelUserData.points.toLocaleString();
+            let pts = panelUserData.points;
+            if (pts >= 1000000) {
+                pts = (pts / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+            } else if (pts >= 1000) {
+                pts = (pts / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+            } else {
+                pts = pts.toString();
+            }
+            ptsText.textContent = pts;
             ptsText.style.display = 'block';
         }
 
