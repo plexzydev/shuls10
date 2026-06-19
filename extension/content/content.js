@@ -120,6 +120,8 @@ function showPanelLoggedOut() {
     if (!shulsActive) return;
     panelUserData = null;
     panelStreamData = null;
+    const ptsText = document.getElementById('shuls-fab-points');
+    if (ptsText) ptsText.style.display = 'none';
     const tabs = document.getElementById('shuls-tabs');
     const body = document.getElementById('shuls-body');
     if (tabs) tabs.style.display = 'none';
@@ -714,7 +716,10 @@ function injectPanel() {
     const el = document.createElement('div');
     el.id = 'shuls-ext-root';
     el.innerHTML = `
-        <div class="shuls-fab" id="shuls-fab"><img src="${chrome.runtime.getURL('icons/points.png')}" alt="S" style="width:100%;height:100%;object-fit:contain;pointer-events:none;" /></div>
+        <div class="shuls-fab" id="shuls-fab">
+            <img src="${chrome.runtime.getURL('icons/points.png')}" alt="S" style="width:24px;height:24px;object-fit:contain;pointer-events:none;" />
+            <span class="shuls-fab-points-text" id="shuls-fab-points"></span>
+        </div>
         <div class="shuls-panel hidden" id="shuls-panel">
             <div class="shuls-tabs" id="shuls-tabs">
                 <button class="shuls-tab active" data-tab="insignias">Insignias</button>
@@ -793,8 +798,8 @@ function positionFabNearChat() {
         fab.style.display = 'flex';
 
         // Set to 'auto' to ignore, or a pixel value like '100px'
-        fab.style.right = '330px';   // Distance from right side of screen
-        fab.style.bottom = '95px';   // Distance from bottom of screen
+        fab.style.right = '150px';   // Distance from right side of screen
+        fab.style.bottom = '10px';   // Distance from bottom of screen
         fab.style.left = 'auto';
         fab.style.top = 'auto';
         
@@ -844,6 +849,13 @@ async function loadPanel() {
         document.getElementById('shuls-tabs').style.display = 'flex';
         panelUserData = response.user;
         panelStreamData = response.stream;
+        
+        const ptsText = document.getElementById('shuls-fab-points');
+        if (ptsText && panelUserData && panelUserData.points !== undefined) {
+            ptsText.textContent = panelUserData.points.toLocaleString();
+            ptsText.style.display = 'block';
+        }
+
         renderTab();
     } catch (e) {
         body.innerHTML = '<p class="shuls-err">Error cargando</p>';
