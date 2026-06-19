@@ -785,120 +785,33 @@ function positionFabNearChat() {
 
     const syncPosition = () => {
         if (!shulsActive) return;
-        requestAnimationFrame(syncPosition);
-
-        // Fallback positioning if Kick's UI hasn't loaded or crashed
-        const useFallbackPosition = () => {
-            fab.style.display = 'flex';
-            fab.style.top = 'auto';
-            fab.style.left = 'auto';
-            fab.style.bottom = '80px';
-            fab.style.right = '20px';
-        };
-
-        // APPROACH: Find the green "Chat" button, go up to its container (the bottom bar),
-        // and find the store button on the left side of that bar.
-
-        // 1. Find the Chat button
-        const allBtns = Array.from(document.querySelectorAll('button'));
-        let chatBtn = allBtns.find(b => {
-            const text = b.textContent.trim().toLowerCase();
-            return text === 'chat' || text === 'send' || text === 'enviar';
-        });
-
-        if (!chatBtn) {
-            // Fallback: look for a bright green button at the bottom
-            chatBtn = allBtns.find(b => {
-                const style = window.getComputedStyle(b);
-                return style.backgroundColor === 'rgb(83, 224, 115)' || style.backgroundColor === 'rgb(34, 197, 94)';
-            });
-        }
-
-        if (!chatBtn) {
-            useFallbackPosition();
-            return;
-        }
-
-        // 2. Find the bottom bar container
-        let bottomBar = chatBtn.parentElement;
-        // Go up until we find a container that spans the chat width (>200px)
-        while (bottomBar && bottomBar.getBoundingClientRect().width < 200) {
-            bottomBar = bottomBar.parentElement;
-        }
-
-        if (!bottomBar) {
-            useFallbackPosition();
-            return;
-        }
-
-        // 3. Find elements inside the left side of the bottom bar
-        const barRect = bottomBar.getBoundingClientRect();
         
-        // Get direct children or close descendants that look like buttons/items
-        let candidates = Array.from(bottomBar.querySelectorAll('button, a, div[role="button"], div.flex > div.flex > div.flex'));
+        // =========================================================
+        // MANUAL POSITIONING: Change these values to move the button!
+        // =========================================================
         
-        // If we didn't find much, just grab all divs that have an SVG and text
-        if (candidates.length < 3) {
-            candidates = Array.from(bottomBar.querySelectorAll('div')).filter(d => d.querySelector('svg') && d.textContent.trim().length > 0);
-        }
-
-        const leftItems = candidates.filter(el => {
-            if (el.id === 'shuls-fab') return false;
-            const r = el.getBoundingClientRect();
-            // Must have some size and be on the left half of the bar
-            return r.width >= 10 && r.height >= 10 && r.left < barRect.left + (barRect.width / 2);
-        });
-
-        // Filter out items that contain other items from our list to only get the deepest elements
-        const leafItems = leftItems.filter(el => {
-            return !leftItems.some(other => other !== el && el.contains(other));
-        });
-
-        leafItems.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
-
-        let targetEl = null;
-
-        // Try to find the store (small number)
-        for (const el of leafItems) {
-            const text = el.textContent.trim().replace(/[,.\s]/g, '');
-            if (/^\d{1,3}$/.test(text)) {
-                targetEl = el;
-                break; // Found store
-            }
-        }
-
-        // Fallbacks
-        if (!targetEl && leafItems.length > 1) targetEl = leafItems[1];
-        if (!targetEl && leafItems.length > 0) targetEl = leafItems[0];
-
-        // If we still didn't find the left items, fallback to placing it left of the Chat button
-        if (!targetEl) {
-            const chatRect = chatBtn.getBoundingClientRect();
-            fab.style.display = 'flex';
-            fab.style.left = `${chatRect.left - 100}px`;
-            fab.style.top = `${chatRect.top + (chatRect.height / 2) - 16}px`;
-            fab.style.bottom = 'auto';
-            fab.style.right = 'auto';
-            return;
-        }
-
-        const finalRect = targetEl.getBoundingClientRect();
-        
-        // Place FAB to the RIGHT of the target element, vertically centered
         fab.style.display = 'flex';
-        fab.style.left = `${finalRect.right + 200}px`;
-        fab.style.top = `${finalRect.top + (finalRect.height / 2) - 20}px`;
-        fab.style.bottom = 'auto';
-        fab.style.right = 'auto';
 
-        // Sync panel position if open
+        // Set to 'auto' to ignore, or a pixel value like '100px'
+        fab.style.right = '330px';   // Distance from right side of screen
+        fab.style.bottom = '95px';   // Distance from bottom of screen
+        fab.style.left = 'auto';
+        fab.style.top = 'auto';
+        
+        // If you want to position it from left/top instead, uncomment these
+        // fab.style.left = '500px';
+        // fab.style.top = '800px';
+
+        // Also sync panel position if it's open
         const panel = document.getElementById('shuls-panel');
         if (panel && !panel.classList.contains('hidden')) {
             const fabRect = fab.getBoundingClientRect();
             panel.style.position = 'fixed';
             panel.style.bottom = `${window.innerHeight - fabRect.top + 10}px`;
-            panel.style.left = `${fabRect.left}px`;
+            panel.style.left = `${fabRect.left - 200}px`;
         }
+        
+        requestAnimationFrame(syncPosition);
     };
 
     requestAnimationFrame(syncPosition);
